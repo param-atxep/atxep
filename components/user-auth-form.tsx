@@ -34,7 +34,7 @@ export function UserAuthForm({ className, isSignUp = false, ...props }: UserAuth
     try {
       if (isSignUp) {
         // Signup
-        const res = await fetch('/api/auth/register', {
+        const res = await fetch('/api/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password, name, mobile }),
@@ -77,8 +77,10 @@ export function UserAuthForm({ className, isSignUp = false, ...props }: UserAuth
 
         router.push('/onboard');
       }
-    } catch (error) {
-      setError('An error occurred. Please try again.');
+    } catch (error: any) {
+      console.error('[AUTH_ERROR]', error);
+      const errorMessage = error?.message || 'An error occurred. Please try again.';
+      setError(errorMessage);
       setIsLoading(false);
     }
   }

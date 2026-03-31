@@ -5,36 +5,48 @@ import { successResponse, handleApiError, ValidationError } from "@/lib/api"
 
 export async function POST(req: Request) {
   try {
+    console.log("[ONBOARD] Starting request...")
+    
     const session = await getAuthSession()
+    console.log("[ONBOARD] Session email:", session?.user?.email)
 
     if (!session?.user?.email) {
+      console.log("[ONBOARD] No session found")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const body = await req.json()
-    const { role, title, bio, hourlyRate, company, description } = body
+    console.log("[ONBOARD] Body:", body)
+    
+    const { role, title, bio, hourlyRate, company, description, name } = body
 
     if (!role || !["CLIENT", "FREELANCER"].includes(role)) {
+      console.log("[ONBOARD] Invalid role:", role)
       return NextResponse.json({ error: "Invalid role. Use CLIENT or FREELANCER" }, { status: 400 })
     }
 
     // Update user role in database
+    console.log("[ONBOARD] Updating user with email:", session.user.email)
     const updatedUser = await db.user.update({
       where: {
         email: session.user.email,
       },
       data: {
         role,
+        ...(name && { name }),
       },
     })
+    console.log("[ONBOARD] User updated:", updatedUser.id)
 
     // Create freelancer profile if role is FREELANCER
     if (role === "FREELANCER") {
+      console.log("[ONBOARD] Checking for existing freelancer...")
       const existingFreelancer = await db.freelancer.findUnique({
         where: { userId: updatedUser.id },
       })
 
       if (!existingFreelancer) {
+        console.log("[ONBOARD] Creating new freelancer profile...")
         await db.freelancer.create({
           data: {
             userId: updatedUser.id,
@@ -45,6 +57,7 @@ export async function POST(req: Request) {
           },
         })
       } else if (title || bio || hourlyRate) {
+        console.log("[ONBOARD] Updating existing freelancer profile...")
         await db.freelancer.update({
           where: { userId: updatedUser.id },
           data: {
@@ -58,11 +71,13 @@ export async function POST(req: Request) {
 
     // Create client profile if role is CLIENT
     if (role === "CLIENT") {
+      console.log("[ONBOARD] Checking for existing client...")
       const existingClient = await db.client.findUnique({
         where: { userId: updatedUser.id },
       })
 
       if (!existingClient) {
+        console.log("[ONBOARD] Creating new client profile...")
         await db.client.create({
           data: {
             userId: updatedUser.id,
@@ -71,6 +86,7 @@ export async function POST(req: Request) {
           },
         })
       } else if (company || description) {
+        console.log("[ONBOARD] Updating existing client profile...")
         await db.client.update({
           where: { userId: updatedUser.id },
           data: {
@@ -81,6 +97,7 @@ export async function POST(req: Request) {
       }
     }
 
+    console.log("[ONBOARD] Fetching updated profile...")
     const updatedProfile = await db.user.findUnique({
       where: { id: updatedUser.id },
       include: {
@@ -89,6 +106,7 @@ export async function POST(req: Request) {
       },
     })
 
+    console.log("[ONBOARD] Success!")
     return NextResponse.json(
       { 
         success: true, 
@@ -99,6 +117,8 @@ export async function POST(req: Request) {
     )
   } catch (error) {
     console.error("[ONBOARD_ERROR]", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    const errorMessage = error instanceof Error ? error.message : "Unknown error"
+    console.error("[ONBOARD_ERROR_DETAILS]", errorMessage)
+    return NextResponse.json({ error: "Internal server error", details: errorMessage }, { status: 500 })
   }
 }

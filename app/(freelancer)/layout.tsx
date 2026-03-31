@@ -25,7 +25,11 @@ export default async function FreelancerLayout({
     redirect('/login')
   }
 
-  // Check if user is FREELANCER role
+  // Check if user is FREELANCER role - if no role, redirect to onboard
+  if (!user.role) {
+    redirect('/onboard')
+  }
+
   if (user.role !== 'FREELANCER') {
     redirect('/client/dashboard')
   }

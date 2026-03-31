@@ -25,7 +25,11 @@ export default async function ClientLayout({
     redirect('/login')
   }
 
-  // Check if user is CLIENT role
+  // Check if user is CLIENT role - if no role, redirect to onboard
+  if (!user.role) {
+    redirect('/onboard')
+  }
+
   if (user.role !== 'CLIENT') {
     redirect('/freelancer/dashboard')
   }

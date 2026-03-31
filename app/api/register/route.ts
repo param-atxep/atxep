@@ -6,8 +6,11 @@ export async function POST(req: NextRequest) {
   try {
     const { email, password, name, mobile } = await req.json()
 
+    console.log('[REGISTER] Attempting registration for:', email)
+
     // Validation
     if (!email || !password || !name) {
+      console.log('[REGISTER] Missing required fields')
       return NextResponse.json(
         { error: 'Missing required fields: email, password, name' },
         { status: 400 }
@@ -15,6 +18,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (password.length < 6) {
+      console.log('[REGISTER] Password too short')
       return NextResponse.json(
         { error: 'Password must be at least 6 characters' },
         { status: 400 }
@@ -27,6 +31,7 @@ export async function POST(req: NextRequest) {
     })
 
     if (existingUser) {
+      console.log('[REGISTER] Email already registered:', email)
       return NextResponse.json(
         { error: 'Email already registered' },
         { status: 400 }
@@ -45,6 +50,8 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    console.log('[REGISTER] User created successfully:', user.id)
+
     return NextResponse.json(
       {
         success: true,
@@ -56,10 +63,11 @@ export async function POST(req: NextRequest) {
       },
       { status: 201 }
     )
-  } catch (error) {
-    console.error('Registration error:', error)
+  } catch (error: any) {
+    console.error('[REGISTER_ERROR]', error?.message || error)
+    const errorMessage = error?.message || 'An error occurred during registration'
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: errorMessage },
       { status: 500 }
     )
   }

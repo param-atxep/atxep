@@ -6,7 +6,6 @@ import { useState } from "react"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { Icons } from "@/components/more-icons"
-import Link from "next/link"
 
 export default function OnboardPage() {
   const { data: session, status } = useSession()
@@ -46,14 +45,20 @@ export default function OnboardPage() {
       })
 
       if (response.ok) {
-        // Redirect based on role selection
-        if (role === "CLIENT") {
-          router.push("/client/dashboard")
-        } else {
-          router.push("/freelancer/dashboard")
-        }
+        // Refresh server-side data and session
+        router.refresh()
+        
+        // Wait a moment for session to update, then redirect
+        setTimeout(() => {
+          if (role === "CLIENT") {
+            router.push("/client/dashboard")
+          } else {
+            router.push("/freelancer/dashboard")
+          }
+        }, 500)
       } else {
-        console.error("Failed to save role")
+        const errorData = await response.json().catch(() => ({}))
+        console.error("Failed to save role:", errorData)
         setLoading(false)
         setSelectedRole(null)
       }
@@ -66,8 +71,8 @@ export default function OnboardPage() {
 
   return (
     <div className="container flex h-screen w-screen flex-col items-center justify-center">
-      <Link
-        href="/login"
+      <button
+        onClick={() => router.back()}
         className={cn(
           buttonVariants({ variant: "ghost" }),
           "absolute left-4 top-4 md:left-8 md:top-8"
@@ -77,7 +82,7 @@ export default function OnboardPage() {
           <Icons.chevronLeft className="mr-2 h-4 w-4" />
           Back
         </>
-      </Link>
+      </button>
 
       <div className="mx-auto flex w-full flex-col justify-center space-y-8 sm:w-[450px]">
         <div className="flex flex-col space-y-4 text-center">
