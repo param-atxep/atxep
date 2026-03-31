@@ -31,11 +31,11 @@ export const authOptions: NextAuthOptions = {
           where: { email: credentials.email },
         })
 
-        if (!user) {
-          throw new Error('User not found')
+        if (!user || !user.password) {
+          throw new Error('Invalid credentials')
         }
 
-        const passwordMatch = await bcrypt.compare(credentials.password, user.password || '')
+        const passwordMatch = await bcrypt.compare(credentials.password, user.password)
 
         if (!passwordMatch) {
           throw new Error('Invalid password')

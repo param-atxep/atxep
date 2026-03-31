@@ -96,7 +96,3 @@ export const config = {
     '/freelancer/:path*',
   ]
 }
-
-export const config = {
-    matcher: ["/dashboard/:path*", "/editor/:path*", "/login", "/register", "/onboard"],
-}
