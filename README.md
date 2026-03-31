@@ -4,9 +4,7 @@ ATXEP is a modern SaaS platform built using Next.js, Tailwind CSS, Shadcn-ui, Ma
 
 ## Overview
 
-ATXEP provides a comprehensive platform for:
-
-https://github.com/DarkInventor/QuotesAI/assets/67015517/e59b2402-772b-4ede-a28d-951278e6c555
+ATXEP is a comprehensive freelance marketplace and project management platform that connects clients with talented freelancers. Built with modern technologies for production-grade performance and scalability.
 
 
 ## Environment Variables
@@ -50,7 +48,7 @@ STRIPE_WEBHOOK_SECRET=
 
 1. **Clone the repository:**
    ```sh
-   git clone https://github.com/yourusername/atxep.git
+   git clone https://github.com/param-atxep/atxep.git
    cd atxep
    ```
 

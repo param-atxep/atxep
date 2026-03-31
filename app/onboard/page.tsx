@@ -46,7 +46,12 @@ export default function OnboardPage() {
       })
 
       if (response.ok) {
-        router.push("/dashboard")
+        // Redirect based on role selection
+        if (role === "CLIENT") {
+          router.push("/client/dashboard")
+        } else {
+          router.push("/freelancer/dashboard")
+        }
       } else {
         console.error("Failed to save role")
         setLoading(false)
