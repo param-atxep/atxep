@@ -36,8 +36,9 @@ export const authOptions: NextAuthOptions = {
             throw new Error('User account not found. Please create an account first.')
           }
 
+          // If user has no password, they signed up with OAuth only
           if (!user.password) {
-            throw new Error('This account has no password. Try using Google or GitHub to login.')
+            throw new Error('This account was created with Google/GitHub only. Please login using Google or GitHub instead.')
           }
 
           const passwordMatch = await bcrypt.compare(credentials.password, user.password)

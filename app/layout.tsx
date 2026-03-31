@@ -3,8 +3,6 @@ import { MainNav } from "@/components/main-nav";
 import { cn } from "@/lib/utils";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { SpeedInsights } from '@vercel/speed-insights/next';
-import { Analytics } from '@vercel/analytics/react';
 import "./globals.css";
 import { fontSans, fontDisplay } from "@/lib/fonts";
 import Link from "@/node_modules/next/link";
@@ -73,11 +71,8 @@ export default function RootLayout({
           {/* <HeroPage /> */}
 
           <main className="flex-1">{children}</main>
-          {process.env.NODE_ENV === 'production' && <Analytics />}
-          {process.env.NODE_ENV === 'production' && <SpeedInsights />}
-          {/* </div>
-           
-          <SiteFooter /> */}
+          {/* Removed SpeedInsights and Analytics to fix performance monitoring issues */}
+          {/* <SiteFooter /> */}
           <Toaster />
           </ThemeProvider>
         </AuthProvider>

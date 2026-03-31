@@ -29,10 +29,13 @@ export default function OnboardPage() {
   }
 
   const handleRoleSelection = async (role: "CLIENT" | "FREELANCER") => {
-    setLoading(true)
-    setSelectedRole(role)
-
+    console.log("🔵 [ONBOARD_FRONTEND] Role selection clicked:", role)
+    
     try {
+      setLoading(true)
+      setSelectedRole(role)
+
+      console.log("🔵 [ONBOARD_FRONTEND] Sending request to API...")
       const response = await fetch("/api/users/onboard", {
         method: "POST",
         headers: {
@@ -44,28 +47,35 @@ export default function OnboardPage() {
         }),
       })
 
+      console.log("🔵 [ONBOARD_FRONTEND] Response status:", response.status)
+
       if (response.ok) {
+        const data = await response.json()
+        console.log("🟢 [ONBOARD_FRONTEND] Success! User role updated:", data)
+        
         // Refresh server-side data and session
+        console.log("🔵 [ONBOARD_FRONTEND] Refreshing session...")
         router.refresh()
         
-        // Wait a moment for session to update, then redirect
-        setTimeout(() => {
-          if (role === "CLIENT") {
-            router.push("/client/dashboard")
-          } else {
-            router.push("/freelancer/dashboard")
-          }
-        }, 500)
+        // Wait for session to update, then redirect
+        console.log("🔵 [ONBOARD_FRONTEND] Waiting 1 second before redirect...")
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        
+        const redirectUrl = role === "CLIENT" ? "/client/dashboard" : "/freelancer/dashboard"
+        console.log("🟢 [ONBOARD_FRONTEND] Redirecting to:", redirectUrl)
+        router.push(redirectUrl)
       } else {
-        const errorData = await response.json().catch(() => ({}))
-        console.error("Failed to save role:", errorData)
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
+        console.error("❌ [ONBOARD_FRONTEND] API Error:", response.status, errorData)
         setLoading(false)
         setSelectedRole(null)
+        alert(`Error saving role: ${errorData.error || "Unknown error"}`)
       }
     } catch (error) {
-      console.error("Error:", error)
+      console.error("❌ [ONBOARD_FRONTEND] Exception:", error)
       setLoading(false)
       setSelectedRole(null)
+      alert(`Error: ${error instanceof Error ? error.message : "Unknown error"}`)
     }
   }
 

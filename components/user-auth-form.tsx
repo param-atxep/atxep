@@ -65,7 +65,15 @@ export function UserAuthForm({ className, isSignUp = false, ...props }: UserAuth
         });
 
         if (!result?.ok) {
-          setError(result?.error || 'Invalid email or password');
+          const errorMsg = result?.error || 'Invalid email or password';
+          
+          // Check if it's an OAuth-only account error
+          if (errorMsg.includes('OAuth') || errorMsg.includes('Google') || errorMsg.includes('GitHub')) {
+            setError(`${errorMsg}. Try using the Google or GitHub login button below.`);
+          } else {
+            setError(errorMsg);
+          }
+          
           setIsLoading(false);
           return;
         }
