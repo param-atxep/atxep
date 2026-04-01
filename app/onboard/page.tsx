@@ -61,7 +61,7 @@ export default function OnboardPage() {
         console.log("🔵 [ONBOARD_FRONTEND] Waiting 1 second before redirect...")
         await new Promise(resolve => setTimeout(resolve, 1000))
         
-        const redirectUrl = role === "CLIENT" ? "/client/dashboard" : "/freelancer/dashboard"
+        const redirectUrl = role === "CLIENT" ? "/client" : "/freelancer"
         console.log("🟢 [ONBOARD_FRONTEND] Redirecting to:", redirectUrl)
         router.push(redirectUrl)
       } else {

@@ -31,12 +31,7 @@ export default async function FreelancerLayout({
   }
 
   if (user.role !== 'FREELANCER') {
-    redirect('/client/dashboard')
-  }
-
-  // If freelancer profile not created, redirect to onboard
-  if (!user.freelancer) {
-    redirect('/onboard')
+    redirect('/client')
   }
 
   return (

@@ -169,19 +169,19 @@ export default function ClientDashboard() {
             <CardDescription>Get started with common tasks</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Link href="/client/dashboard/hire">
+            <Link href="/client/hire">
               <Button className="w-full justify-start" variant="ghost">
                 <Icons.briefcase className="mr-2 h-4 w-4" />
                 Find Freelancers
               </Button>
             </Link>
-            <Link href="/client/dashboard/projects">
+            <Link href="/client/projects">
               <Button className="w-full justify-start" variant="ghost">
-                <Icons.checkCircle2 className="mr-2 h-4 w-4" />
+                <Icons.check className="mr-2 h-4 w-4" />
                 View My Projects
               </Button>
             </Link>
-            <Link href="/client/dashboard/templates">
+            <Link href="/client/templates">
               <Button className="w-full justify-start" variant="ghost">
                 <Icons.fileText className="mr-2 h-4 w-4" />
                 Browse Templates
@@ -196,19 +196,19 @@ export default function ClientDashboard() {
             <CardDescription>Learn and optimize your work</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Link href="/client/dashboard/ai-help">
+            <Link href="/client/ai-help">
               <Button className="w-full justify-start" variant="ghost">
                 <Icons.sparkles className="mr-2 h-4 w-4" />
                 Get AI Suggestions
               </Button>
             </Link>
-            <Link href="/client/dashboard/requests">
+            <Link href="/client/requests">
               <Button className="w-full justify-start" variant="ghost">
                 <Icons.send className="mr-2 h-4 w-4" />
                 View Requests
               </Button>
             </Link>
-            <Link href="/client/dashboard/settings">
+            <Link href="/client/settings">
               <Button className="w-full justify-start" variant="ghost">
                 <Icons.settings className="mr-2 h-4 w-4" />
                 Settings

@@ -28,7 +28,7 @@ export default withAuth(
     }
 
     // Check role-based routing
-    if (req.nextUrl.pathname.startsWith("/client/dashboard") || req.nextUrl.pathname.startsWith("/client")) {
+    if (req.nextUrl.pathname.startsWith("/client")) {
       if (!isAuth) {
         return NextResponse.redirect(new URL("/login", req.url))
       }
@@ -36,7 +36,7 @@ export default withAuth(
       return null
     }
 
-    if (req.nextUrl.pathname.startsWith("/freelancer/dashboard") || req.nextUrl.pathname.startsWith("/freelancer")) {
+    if (req.nextUrl.pathname.startsWith("/freelancer")) {
       if (!isAuth) {
         return NextResponse.redirect(new URL("/login", req.url))
       }
@@ -58,9 +58,9 @@ export default withAuth(
       // Redirect /dashboard to appropriate role dashboard
       const role = token?.role as string || "CLIENT"
       if (role === "FREELANCER") {
-        return NextResponse.redirect(new URL("/freelancer/dashboard", req.url))
+        return NextResponse.redirect(new URL("/freelancer", req.url))
       }
-      return NextResponse.redirect(new URL("/client/dashboard", req.url))
+      return NextResponse.redirect(new URL("/client", req.url))
     }
 
     if (!isAuth) {

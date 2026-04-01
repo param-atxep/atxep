@@ -169,19 +169,19 @@ export default function FreelancerDashboard() {
             <CardDescription>Manage your freelance work</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Link href="/freelancer/dashboard/work">
+            <Link href="/freelancer/work">
               <Button className="w-full justify-start" variant="ghost">
                 <Icons.briefcase className="mr-2 h-4 w-4" />
                 View Job Offers
               </Button>
             </Link>
-            <Link href="/freelancer/dashboard/projects">
+            <Link href="/freelancer/projects">
               <Button className="w-full justify-start" variant="ghost">
-                <Icons.checkCircle2 className="mr-2 h-4 w-4" />
+                <Icons.check className="mr-2 h-4 w-4" />
                 View My Projects
               </Button>
             </Link>
-            <Link href="/freelancer/dashboard/upload">
+            <Link href="/freelancer/upload">
               <Button className="w-full justify-start" variant="ghost">
                 <Icons.upload className="mr-2 h-4 w-4" />
                 Upload Template
@@ -196,19 +196,19 @@ export default function FreelancerDashboard() {
             <CardDescription>Improve and optimize your profile</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Link href="/freelancer/dashboard/ai-help">
+            <Link href="/freelancer/ai-help">
               <Button className="w-full justify-start" variant="ghost">
                 <Icons.sparkles className="mr-2 h-4 w-4" />
                 Get AI Suggestions
               </Button>
             </Link>
-            <Link href="/freelancer/dashboard/requests">
+            <Link href="/freelancer/requests">
               <Button className="w-full justify-start" variant="ghost">
                 <Icons.send className="mr-2 h-4 w-4" />
                 View Requests
               </Button>
             </Link>
-            <Link href="/freelancer/dashboard/settings">
+            <Link href="/freelancer/settings">
               <Button className="w-full justify-start" variant="ghost">
                 <Icons.settings className="mr-2 h-4 w-4" />
                 Settings
