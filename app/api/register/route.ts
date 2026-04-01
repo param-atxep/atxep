@@ -4,7 +4,10 @@ import bcrypt from 'bcryptjs'
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, name, mobile } = await req.json()
+    let { email, password, name, mobile } = await req.json()
+
+    // Normalize email
+    email = email?.toLowerCase().trim()
 
     console.log('[REGISTER] Attempting registration for:', email)
 
@@ -50,7 +53,7 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    console.log('[REGISTER] User created successfully:', user.id)
+    console.log('[REGISTER] User created successfully:', user.id, 'Email:', user.email)
 
     return NextResponse.json(
       {

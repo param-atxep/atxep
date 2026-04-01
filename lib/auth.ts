@@ -28,8 +28,11 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
+          // Normalize email
+          const email = credentials.email.toLowerCase().trim()
+          
           const user = await db.user.findUnique({
-            where: { email: credentials.email },
+            where: { email },
           })
 
           if (!user) {
@@ -117,16 +120,27 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user, account }) {
       // Initial sign in
       if (user) {
+        console.log('[JWT] Initial sign in - User ID:', user.id, 'Email:', user.email)
         token.id = user.id
+        token.email = user.email
+        token.name = user.name
+        token.picture = user.image
       }
 
       // Load user from database
       try {
+        if (!token.email) {
+          console.warn('[JWT] WARNING: No email in token, skipping lookup')
+          return token
+        }
+
+        console.log('[JWT] Looking up user by email:', token.email)
         const dbUser = await db.user.findUnique({
-          where: { email: token.email! },
+          where: { email: token.email },
         })
 
         if (dbUser) {
+          console.log('[JWT] ✅ User found:', dbUser.id, '-', dbUser.email)
           token.id = dbUser.id
           token.name = dbUser.name
           token.email = dbUser.email
@@ -136,15 +150,18 @@ export const authOptions: NextAuthOptions = {
 
           // Set username if not exists
           if (!dbUser.username) {
+            console.log('[JWT] Setting username for user:', dbUser.id)
             await db.user.update({
               where: { id: dbUser.id },
               data: { username: nanoid(10) },
             })
             token.username = dbUser.username
           }
+        } else {
+          console.warn('[JWT] ⚠️ User NOT found by email:', token.email)
         }
       } catch (error) {
-        console.error('JWT callback error:', error)
+        console.error('[JWT] ❌ JWT callback error:', error)
       }
 
       return token

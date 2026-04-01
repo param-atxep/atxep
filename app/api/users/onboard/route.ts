@@ -11,12 +11,25 @@ export async function POST(req: Request) {
     console.log("[ONBOARD] URL:", req.url)
     
     const session = await getAuthSession()
-    console.log("[ONBOARD] Session user email:", session?.user?.email)
+    console.log("[ONBOARD] Full session:", JSON.stringify(session, null, 2))
+    console.log("[ONBOARD] Session user:", session?.user)
     console.log("[ONBOARD] Session user id:", session?.user?.id)
+    console.log("[ONBOARD] Session user email:", session?.user?.email)
 
-    if (!session?.user?.email) {
+    if (!session?.user) {
       console.log("[ONBOARD_ERROR] No session found - Unauthorized")
       return NextResponse.json({ error: "Unauthorized - Please login first" }, { status: 401 })
+    }
+
+    // Try to use ID first, fallback to email
+    let userId = session.user.id
+    let userEmail = session.user.email?.toLowerCase().trim()
+
+    console.log("[ONBOARD] Normalized email:", userEmail)
+
+    if (!userId && !userEmail) {
+      console.log("[ONBOARD_ERROR] No user ID or email in session")
+      return NextResponse.json({ error: "Session invalid - Missing user identifier" }, { status: 401 })
     }
 
     const body = await req.json()
@@ -31,11 +44,52 @@ export async function POST(req: Request) {
 
     console.log("[ONBOARD] Role validation passed:", role)
 
+    // Verify user exists in database
+    console.log("[ONBOARD] Verifying user exists in database...")
+    let existingUser
+    
+    if (userId) {
+      console.log("[ONBOARD] Looking up user by ID:", userId)
+      existingUser = await db.user.findUnique({
+        where: { id: userId }
+      })
+    } else if (userEmail) {
+      console.log("[ONBOARD] Looking up user by email:", userEmail)
+      existingUser = await db.user.findUnique({
+        where: { email: userEmail }
+      })
+    }
+
+    if (!existingUser) {
+      console.log("[ONBOARD_ERROR] User not found in database. ID:", userId, "Email:", userEmail)
+      
+      // Try to find any user with similar email for debugging
+      if (userEmail) {
+        const allUsers = await db.user.findMany({
+          where: {
+            email: {
+              contains: userEmail.split('@')[0],
+              mode: 'insensitive'
+            }
+          },
+          select: { id: true, email: true, name: true }
+        })
+        console.log("[ONBOARD_ERROR] Similar users found:", allUsers)
+      }
+      
+      return NextResponse.json({ 
+        error: "User account not found in database",
+        details: `User lookup failed: ${userId ? `ID: ${userId}` : `Email: ${userEmail}`}`
+      }, { status: 404 })
+    }
+
+    console.log("[ONBOARD] ✅ User found:", existingUser.id, existingUser.email)
+
     // Update user role in database
     console.log("[ONBOARD] Updating user in database...")
     const updatedUser = await db.user.update({
       where: {
-        email: session.user.email,
+        id: existingUser.id,
       },
       data: {
         role,
