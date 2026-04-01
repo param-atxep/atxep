@@ -77,30 +77,27 @@ export const authOptions: NextAuthOptions = {
       try {
         // For OAuth providers, ensure user exists or create them
         if (account?.provider === 'google' || account?.provider === 'github') {
-          const existingUser = await db.user.findUnique({
-            where: { email: user.email! },
-          })
+          if (!user.email) return false
 
-          if (!existingUser) {
-            // User coming from OAuth for the first time
-            await db.user.upsert({
-              where: { email: user.email! },
-              update: {
-                role: 'CLIENT',
-              },
-              create: {
-                email: user.email!,
-                name: user.name || 'User',
-                image: user.image,
-                role: 'CLIENT',
-              },
-            })
-          }
+          const normalizedEmail = user.email.toLowerCase().trim()
+          
+          await db.user.upsert({
+            where: { email: normalizedEmail },
+            update: {},
+            create: {
+              email: normalizedEmail,
+              name: user.name || 'User',
+              image: user.image,
+              role: 'CLIENT',
+              username: nanoid(10),
+            },
+          })
         }
         return true
       } catch (error: any) {
-        console.error('SignIn callback error:', error)
-        return true // Allow signin even if upsert fails, adapter will handle it
+        console.error('[AUTH] SignIn callback error:', error)
+        // Allow signin even if upsert fails - adapter will handle
+        return true
       }
     },
 
@@ -118,50 +115,34 @@ export const authOptions: NextAuthOptions = {
     },
 
     async jwt({ token, user, account }) {
-      // Initial sign in
+      // On initial sign in, set basic values
       if (user) {
-        console.log('[JWT] Initial sign in - User ID:', user.id, 'Email:', user.email)
         token.id = user.id
         token.email = user.email
         token.name = user.name
         token.picture = user.image
       }
 
-      // Load user from database
-      try {
-        if (!token.email) {
-          console.warn('[JWT] WARNING: No email in token, skipping lookup')
-          return token
-        }
+      // On every token refresh, load user data from DB (but don't update)
+      if (token.email) {
+        try {
+          const normalizedEmail = token.email.toLowerCase().trim()
+          const dbUser = await db.user.findUnique({
+            where: { email: normalizedEmail },
+          })
 
-        console.log('[JWT] Looking up user by email:', token.email)
-        const dbUser = await db.user.findUnique({
-          where: { email: token.email },
-        })
-
-        if (dbUser) {
-          console.log('[JWT] ✅ User found:', dbUser.id, '-', dbUser.email)
-          token.id = dbUser.id
-          token.name = dbUser.name
-          token.email = dbUser.email
-          token.picture = dbUser.image
-          token.username = dbUser.username
-          token.role = dbUser.role || 'CLIENT'
-
-          // Set username if not exists
-          if (!dbUser.username) {
-            console.log('[JWT] Setting username for user:', dbUser.id)
-            await db.user.update({
-              where: { id: dbUser.id },
-              data: { username: nanoid(10) },
-            })
-            token.username = dbUser.username
+          if (dbUser) {
+            token.id = dbUser.id
+            token.name = dbUser.name
+            token.email = dbUser.email
+            token.picture = dbUser.image
+            token.username = dbUser.username || nanoid(10)
+            token.role = dbUser.role || 'CLIENT'
           }
-        } else {
-          console.warn('[JWT] ⚠️ User NOT found by email:', token.email)
+        } catch (error) {
+          console.error('[JWT] Error loading user data:', error)
+          // Continue with existing token data if lookup fails
         }
-      } catch (error) {
-        console.error('[JWT] ❌ JWT callback error:', error)
       }
 
       return token

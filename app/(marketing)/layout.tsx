@@ -15,9 +15,7 @@ import MobileNav from "@/components/mobile-nav";
 import { getCurrentUser } from "@/lib/session";
 import { getAuthSession } from "@/lib/auth";
 import { notFound } from "next/navigation";
-import DashboardLayout from "../(dashboard)/layout";
 import { useRouter } from "next/navigation";
-import DashboardPage from "../(dashboard)/dashboard/page";
 
 const inter = Inter({ subsets: ["latin"] });
 

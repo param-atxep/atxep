@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams
     const category = searchParams.get('category')
     const search = searchParams.get('search')
-    const limit = parseInt(searchParams.get('limit') || '20')
+    const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100)
     const page = parseInt(searchParams.get('page') || '1')
     const offset = (page - 1) * limit
 
@@ -42,10 +42,15 @@ export async function GET(req: NextRequest) {
 
     const total = await db.template.count({ where })
 
-    // Log template views for each template
-    const templateIds = templates.map((t) => t.id)
-    for (const templateId of templateIds) {
-      await logTemplateView(userId, templateId, templates.find((t) => t.id === templateId)?.title)
+    // Log template views for each template (non-blocking)
+    try {
+      for (const template of templates) {
+        await logTemplateView(userId, template.id, template.title).catch(err =>
+          console.error('[ACTIVITY_LOG_ERROR]', err)
+        )
+      }
+    } catch (err) {
+      console.error('[ACTIVITY_LOG_ERROR]', err)
     }
 
     return successResponse(
@@ -57,7 +62,7 @@ export async function GET(req: NextRequest) {
           category: t.category,
           price: t.price?.toNumber() || 0,
           image: t.image,
-          features: t.features,
+          features: t.features || [],
           createdAt: t.createdAt,
         })),
         pagination: {
@@ -68,10 +73,10 @@ export async function GET(req: NextRequest) {
         },
       },
       200,
-      'Templates retrieved'
+      'Templates retrieved successfully'
     )
   } catch (error) {
-    console.error('Get templates error:', error)
+    console.error('[TEMPLATES_GET_ERROR]', error)
     return handleApiError(error)
   }
 }
@@ -83,30 +88,39 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const auth = await requireAuthWithRole(req, 'FREELANCER')
-    if (!auth) throw new ValidationError('Only freelancers can upload templates')
-
     const { userId } = auth
+
     const body = await req.json()
     const { title, description, category, price, features, image } = body
 
     // Validation
-    if (!title) throw new ValidationError('Title is required')
-    if (!description) throw new ValidationError('Description is required')
-    if (!category) throw new ValidationError('Category is required')
-    if (!price || price <= 0) throw new ValidationError('Valid price is required')
+    if (!title || typeof title !== 'string' || !title.trim()) {
+      throw new ValidationError('Valid title is required')
+    }
+    if (!description || typeof description !== 'string' || !description.trim()) {
+      throw new ValidationError('Valid description is required')
+    }
+    if (!category || typeof category !== 'string' || !category.trim()) {
+      throw new ValidationError('Valid category is required')
+    }
+    if (!price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
+      throw new ValidationError('Valid price is required and must be greater than 0')
+    }
 
-    const priceNum = parseFloat(price)
-    if (priceNum > 999999999) throw new ValidationError('Price exceeds maximum limit')
+    const priceNum = parseFloat(price.toString())
+    if (priceNum > 999999999) {
+      throw new ValidationError('Price exceeds maximum limit')
+    }
 
     // Create template
     const template = await db.template.create({
       data: {
-        title,
-        description,
-        category,
+        title: title.trim(),
+        description: description.trim(),
+        category: category.trim(),
         price: priceNum,
         image: image || null,
-        features: Array.isArray(features) ? features : [],
+        features: Array.isArray(features) ? features.filter(f => f) : [],
       },
     })
 
@@ -122,35 +136,38 @@ export async function POST(req: NextRequest) {
         createdAt: template.createdAt,
       },
       201,
-      'Template created'
+      'Template created successfully'
     )
   } catch (error) {
-    console.error('Create template error:', error)
+    console.error('[TEMPLATES_POST_ERROR]', error)
     return handleApiError(error)
   }
 }
 
 /**
- * POST /api/templates/:id/purchase
+ * PUT /api/templates/:id/purchase
  * Purchase a template (CLIENT only)
  */
 export async function PUT(req: NextRequest) {
   try {
     const auth = await requireAuthWithRole(req, 'CLIENT')
-    if (!auth) throw new ValidationError('Only clients can purchase templates')
-
     const { userId } = auth
+
     const body = await req.json()
     const { templateId } = body
 
-    if (!templateId) throw new ValidationError('templateId is required')
+    if (!templateId || typeof templateId !== 'string') {
+      throw new ValidationError('Valid templateId is required')
+    }
 
     // Get template
     const template = await db.template.findUnique({
       where: { id: templateId },
     })
 
-    if (!template) throw new ValidationError('Template not found')
+    if (!template) {
+      throw new ValidationError('Template not found')
+    }
 
     const price = template.price?.toNumber() || 0
 
@@ -159,7 +176,9 @@ export async function PUT(req: NextRequest) {
       where: { id: userId },
     })
 
-    if (!user) throw new ValidationError('User not found')
+    if (!user) {
+      throw new ValidationError('User not found')
+    }
 
     const balance = user.walletBalance?.toNumber() || 0
     if (balance < price) {
@@ -168,50 +187,52 @@ export async function PUT(req: NextRequest) {
       )
     }
 
-    // Process purchase
-    await db.$transaction(async (tx) => {
-      // Deduct from client wallet
-      await tx.user.update({
-        where: { id: userId },
-        data: {
-          walletBalance: { decrement: price },
-          totalSpent: { increment: price },
+    // Process purchase with transaction
+    await db.transaction.create({
+      data: {
+        userId: userId,
+        type: 'PAYMENT',
+        amount: price,
+        status: 'COMPLETED',
+        description: `Purchased template: ${template.title}`,
+        templateId: templateId,
+        senderId: userId,
+        metadata: {
+          templateTitle: template.title,
+          templateCategory: template.category,
         },
-      })
-
-      // Create transaction record
-      await tx.transaction.create({
-        data: {
-          userId: userId,
-          type: 'PAYMENT',
-          amount: price,
-          status: 'COMPLETED',
-          description: `Purchased template: ${template.title}`,
-          templateId: templateId,
-          senderId: userId,
-          metadata: {
-            templateTitle: template.title,
-            templateCategory: template.category,
-          },
-        },
-      })
-
-      // Log purchase activity
-      await logTemplatePurchase(userId, templateId, price, template.title)
+      },
     })
+
+    // Update wallet
+    await db.user.update({
+      where: { id: userId },
+      data: {
+        walletBalance: { decrement: price },
+        totalSpent: { increment: price },
+      },
+    })
+
+    // Log purchase activity (non-blocking)
+    try {
+      await logTemplatePurchase(userId, templateId, price, template.title).catch(err =>
+        console.error('[ACTIVITY_LOG_ERROR]', err)
+      )
+    } catch (err) {
+      console.error('[ACTIVITY_LOG_ERROR]', err)
+    }
 
     return successResponse(
       {
-        success: true,
         templateId,
         price,
-        message: `Template purchased successfully`,
+        title: template.title,
       },
       200,
-      'Template purchased'
+      'Template purchased successfully'
     )
   } catch (error) {
-    console.error('Purchase template error:', error)
+    console.error('[TEMPLATES_PUT_ERROR]', error)
     return handleApiError(error)
   }
 }

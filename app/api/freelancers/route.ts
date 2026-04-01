@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireAuth, handleApiError } from '@/lib/auth-middleware'
-import { successResponse, ValidationError } from '@/lib/api'
+import { successResponse, errorResponse } from '@/lib/api'
 
 /**
  * GET /api/freelancers
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams
     const search = searchParams.get('search')
     const skill = searchParams.get('skill')
-    const limit = parseInt(searchParams.get('limit') || '20')
+    const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100)
     const page = parseInt(searchParams.get('page') || '1')
     const offset = (page - 1) * limit
     const minRating = searchParams.get('minRating') ? parseFloat(searchParams.get('minRating')!) : null
@@ -103,9 +103,9 @@ export async function GET(req: NextRequest) {
           bio: f.freelancer?.bio,
           skills: f.freelancer?.skills || [],
           portfolio: f.freelancer?.portfolio,
-          hourlyRate: f.freelancer?.hourlyRate?.toNumber() || 0,
-          rating: f.freelancer?.rating?.toNumber() || 0,
-          reviewCount: f.freelancer?.reviewCount || 0,
+          hourlyRate: f.freelancer?.hourlyRate?.toString(),
+          rating: f.freelancer?.rating?.toString(),
+          reviewCount: f.freelancer?.reviewCount,
         })),
         pagination: {
           page,
@@ -115,10 +115,10 @@ export async function GET(req: NextRequest) {
         },
       },
       200,
-      'Freelancers retrieved'
+      'Freelancers retrieved successfully'
     )
   } catch (error) {
-    console.error('Get freelancers error:', error)
+    console.error('[FREELANCERS_ERROR]', error)
     return handleApiError(error)
   }
 }

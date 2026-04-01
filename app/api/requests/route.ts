@@ -90,9 +90,15 @@ export async function POST(req: NextRequest) {
     const { title, description, freelancerId, amount, dueDate, projectId } = body
 
     // Validation
-    if (!title) throw new ValidationError('Title is required')
-    if (!description) throw new ValidationError('Description is required')
-    if (!freelancerId) throw new ValidationError('freelancerId is required')
+    if (!title || typeof title !== 'string' || !title.trim()) {
+      throw new ValidationError('Valid title is required')
+    }
+    if (!description || typeof description !== 'string' || !description.trim()) {
+      throw new ValidationError('Valid description is required')
+    }
+    if (!freelancerId || typeof freelancerId !== 'string') {
+      throw new ValidationError('Valid freelancerId is required')
+    }
 
     // Verify freelancer exists
     const freelancer = await db.user.findUnique({
@@ -111,34 +117,34 @@ export async function POST(req: NextRequest) {
     }
 
     // Create request
-    const request = await db.$transaction(async (tx) => {
-      const newRequest = await tx.request.create({
-        data: {
-          title,
-          description,
-          senderId: userId,
-          receiverId: freelancerId,
-          amount: amount ? parseFloat(amount) : null,
-          dueDate: dueDate ? new Date(dueDate) : null,
-          projectId: projectId || null,
-          status: 'PENDING',
-        },
-        include: {
-          sender: { select: { id: true, name: true, email: true } },
-          receiver: { select: { id: true, name: true, email: true } },
-        },
-      })
+    const request = await db.request.create({
+      data: {
+        title: title.trim(),
+        description: description.trim(),
+        senderId: userId,
+        receiverId: freelancerId,
+        amount: amount ? parseFloat(amount.toString()) : null,
+        dueDate: dueDate ? new Date(dueDate) : null,
+        projectId: projectId || null,
+        status: 'PENDING',
+      },
+      include: {
+        sender: { select: { id: true, name: true, email: true } },
+        receiver: { select: { id: true, name: true, email: true } },
+      },
+    })
 
-      // Log activity
+    // Log activity (non-blocking)
+    try {
       await logActivity(
         userId,
         'REQUEST_SENT',
         `Sent request: ${title} to ${freelancer.name}`,
-        { requestId: newRequest.id, receiverId: freelancerId }
+        { requestId: request.id, receiverId: freelancerId }
       )
-
-      return newRequest
-    })
+    } catch (err) {
+      console.error('[ACTIVITY_LOG_ERROR]', err)
+    }
 
     return successResponse(
       {
@@ -153,11 +159,11 @@ export async function POST(req: NextRequest) {
         createdAt: request.createdAt,
       },
       201,
-      'Request sent'
+      'Request sent successfully'
     )
   } catch (error) {
-    console.error('Create request error:', error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error('[REQUESTS_POST_ERROR]', error)
+    return handleApiError(error)
   }
 }
 
@@ -171,8 +177,12 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json()
     const { requestId, status } = body
 
-    if (!requestId) throw new ValidationError('requestId is required')
-    if (!status) throw new ValidationError('status is required')
+    if (!requestId || typeof requestId !== 'string') {
+      throw new ValidationError('Valid requestId is required')
+    }
+    if (!status || typeof status !== 'string') {
+      throw new ValidationError('Valid status is required')
+    }
 
     const validStatuses = ['PENDING', 'ACCEPTED', 'REJECTED', 'COMPLETED']
     if (!validStatuses.includes(status)) {
@@ -182,52 +192,60 @@ export async function PATCH(req: NextRequest) {
     // Get request
     const request = await db.request.findUnique({
       where: { id: requestId },
-      include: { sender: true, receiver: true },
+      include: { sender: { select: { id: true, name: true, email: true } }, receiver: { select: { id: true, name: true, email: true } } },
     })
 
-    if (!request) throw new ValidationError('Request not found')
+    if (!request) {
+      throw new ValidationError('Request not found')
+    }
 
     // Verify user is receiver
     if (request.receiverId !== userId) {
-      throw new ValidationError('Only receiver can update request status')
+      throw new ValidationError('Only the request receiver can update its status')
+    }
+
+    // Verify valid status transition
+    if (request.status !== 'PENDING' && status !== 'COMPLETED') {
+      throw new ValidationError(`Cannot change status from ${request.status} to ${status}`)
     }
 
     // Update request
-    const updatedRequest = await db.$transaction(async (tx) => {
-      const updated = await tx.request.update({
-        where: { id: requestId },
-        data: { status },
-        include: {
-          sender: { select: { id: true, name: true, email: true } },
-          receiver: { select: { id: true, name: true, email: true } },
-        },
-      })
+    const updatedRequest = await db.request.update({
+      where: { id: requestId },
+      data: { status },
+      include: {
+        sender: { select: { id: true, name: true, email: true } },
+        receiver: { select: { id: true, name: true, email: true } },
+      },
+    })
 
-      // Log activity
+    // Log activity (non-blocking)
+    try {
       const action = status === 'ACCEPTED' ? 'REQUEST_ACCEPTED' : 'REQUEST_REJECTED'
       await logActivity(
         userId,
         action,
-        `${action === 'REQUEST_ACCEPTED' ? 'Accepted' : 'Rejected'} request: ${request.title}`,
+        `${status.charAt(0) + status.slice(1).toLowerCase()} request: ${request.title}`,
         { requestId, status }
-      )
-
-      return updated
-    })
+      ).catch(err => console.error('[ACTIVITY_LOG_ERROR]', err))
+    } catch (err) {
+      console.error('[ACTIVITY_LOG_ERROR]', err)
+    }
 
     return successResponse(
       {
         id: updatedRequest.id,
         status: updatedRequest.status,
+        title: updatedRequest.title,
         sender: updatedRequest.sender,
         receiver: updatedRequest.receiver,
         updatedAt: updatedRequest.updatedAt,
       },
       200,
-      `Request ${status.toLowerCase()}`
+      `Request ${status.toLowerCase()} successfully`
     )
   } catch (error) {
-    console.error('Update request error:', error)
+    console.error('[REQUESTS_PATCH_ERROR]', error)
     return handleApiError(error)
   }
 }

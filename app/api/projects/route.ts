@@ -1,8 +1,7 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireAuthWithRole, handleApiError } from '@/lib/auth-middleware'
-import { successResponse, ValidationError } from '@/lib/api'
-import { logProjectCreation, logProjectAcceptance } from '@/lib/activity'
+import { successResponse, errorResponse, ValidationError } from '@/lib/api'
 
 /**
  * GET /api/projects
@@ -14,7 +13,7 @@ export async function GET(req: NextRequest) {
 
     const searchParams = req.nextUrl.searchParams
     const status = searchParams.get('status')
-    const limit = parseInt(searchParams.get('limit') || '20')
+    const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100)
     const page = parseInt(searchParams.get('page') || '1')
     const offset = (page - 1) * limit
     const myProjects = searchParams.get('my') === 'true'
@@ -70,10 +69,10 @@ export async function GET(req: NextRequest) {
         },
       },
       200,
-      'Projects retrieved'
+      'Projects retrieved successfully'
     )
   } catch (error) {
-    console.error('Get projects error:', error)
+    console.error('[PROJECTS_GET_ERROR]', error)
     return handleApiError(error)
   }
 }
@@ -85,28 +84,36 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const auth = await requireAuthWithRole(req, 'CLIENT')
-    if (!auth) throw new ValidationError('Only clients can create projects')
-
     const { userId } = auth
     const body = await req.json()
     const { title, description, budget, category, deadline } = body
 
     // Validation
-    if (!title) throw new ValidationError('Title is required')
-    if (!description) throw new ValidationError('Description is required')
-    if (!budget || budget <= 0) throw new ValidationError('Valid budget is required')
-    if (!category) throw new ValidationError('Category is required')
+    if (!title || typeof title !== 'string' || !title.trim()) {
+      throw new ValidationError('Valid title is required')
+    }
+    if (!description || typeof description !== 'string' || !description.trim()) {
+      throw new ValidationError('Valid description is required')
+    }
+    if (!budget || isNaN(parseFloat(budget)) || parseFloat(budget) <= 0) {
+      throw new ValidationError('Valid budget is required and must be greater than 0')
+    }
+    if (!category || typeof category !== 'string' || !category.trim()) {
+      throw new ValidationError('Valid category is required')
+    }
 
-    const budgetNum = parseFloat(budget)
-    if (budgetNum > 999999999) throw new ValidationError('Budget exceeds maximum limit')
+    const budgetNum = parseFloat(budget.toString())
+    if (budgetNum > 999999999) {
+      throw new ValidationError('Budget exceeds maximum limit')
+    }
 
     // Create project
     const project = await db.project.create({
       data: {
-        title,
-        description,
+        title: title.trim(),
+        description: description.trim(),
         budget: budgetNum,
-        category,
+        category: category.trim(),
         deadline: deadline ? new Date(deadline) : null,
         creatorId: userId,
         status: 'OPEN',
@@ -116,8 +123,19 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    // Log activity
-    await logProjectCreation(userId, project.id, title)
+    // Log activity (non-blocking)
+    try {
+      await db.activityLog.create({
+        data: {
+          userId,
+          action: 'PROJECT_CREATED',
+          description: `Created project: ${title}`,
+          metadata: { projectId: project.id },
+        },
+      }).catch(err => console.error('[ACTIVITY_LOG_ERROR]', err))
+    } catch (err) {
+      console.error('[ACTIVITY_LOG_ERROR]', err)
+    }
 
     return successResponse(
       {
@@ -132,10 +150,10 @@ export async function POST(req: NextRequest) {
         createdAt: project.createdAt,
       },
       201,
-      'Project created'
+      'Project created successfully'
     )
   } catch (error) {
-    console.error('Create project error:', error)
+    console.error('[PROJECTS_POST_ERROR]', error)
     return handleApiError(error)
   }
 }
@@ -150,8 +168,12 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json()
     const { projectId, status } = body
 
-    if (!projectId) throw new ValidationError('projectId is required')
-    if (!status) throw new ValidationError('status is required')
+    if (!projectId || typeof projectId !== 'string') {
+      throw new ValidationError('Valid projectId is required')
+    }
+    if (!status || typeof status !== 'string') {
+      throw new ValidationError('Valid status is required')
+    }
 
     const validStatuses = ['OPEN', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']
     if (!validStatuses.includes(status)) {
@@ -163,33 +185,43 @@ export async function PATCH(req: NextRequest) {
       where: { id: projectId },
     })
 
-    if (!project) throw new ValidationError('Project not found')
+    if (!project) {
+      throw new ValidationError('Project not found')
+    }
 
     // Update project
-    const updatedProject = await db.$transaction(async (tx) => {
-      const updated = await tx.project.update({
-        where: { id: projectId },
-        data: {
-          status,
-          submiterId: status === 'IN_PROGRESS' ? userId : project.submiterId,
-        },
-        include: {
-          creator: { select: { id: true, name: true, email: true } },
-          submitter: { select: { id: true, name: true, email: true } },
-        },
-      })
-
-      // Log if accepted
-      if (status === 'IN_PROGRESS') {
-        await logProjectAcceptance(userId, projectId, project.title)
-      }
-
-      return updated
+    const updatedProject = await db.project.update({
+      where: { id: projectId },
+      data: {
+        status,
+        submiterId: status === 'IN_PROGRESS' ? userId : project.submiterId,
+      },
+      include: {
+        creator: { select: { id: true, name: true, email: true } },
+        submitter: { select: { id: true, name: true, email: true } },
+      },
     })
+
+    // Log activity (non-blocking)
+    if (status === 'IN_PROGRESS') {
+      try {
+        await db.activityLog.create({
+          data: {
+            userId,
+            action: 'PROJECT_ACCEPTED',
+            description: `Accepted project: ${project.title}`,
+            metadata: { projectId: project.id },
+          },
+        }).catch(err => console.error('[ACTIVITY_LOG_ERROR]', err))
+      } catch (err) {
+        console.error('[ACTIVITY_LOG_ERROR]', err)
+      }
+    }
 
     return successResponse(
       {
         id: updatedProject.id,
+        title: updatedProject.title,
         status: updatedProject.status,
         submitter: updatedProject.submitter,
         updatedAt: updatedProject.updatedAt,
@@ -198,7 +230,7 @@ export async function PATCH(req: NextRequest) {
       `Project status updated to ${status}`
     )
   } catch (error) {
-    console.error('Update project error:', error)
+    console.error('[PROJECTS_PATCH_ERROR]', error)
     return handleApiError(error)
   }
 }

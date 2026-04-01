@@ -1,27 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import bcrypt from 'bcryptjs'
+import { nanoid } from 'nanoid'
 
 export async function POST(req: NextRequest) {
   try {
-    let { email, password, name, mobile } = await req.json()
-
-    // Normalize email
-    email = email?.toLowerCase().trim()
-
-    console.log('[REGISTER] Attempting registration for:', email)
+    const { email, password, name, mobile } = await req.json()
 
     // Validation
     if (!email || !password || !name) {
-      console.log('[REGISTER] Missing required fields')
       return NextResponse.json(
         { error: 'Missing required fields: email, password, name' },
         { status: 400 }
       )
     }
 
+    const normalizedEmail = email.toLowerCase().trim()
+
     if (password.length < 6) {
-      console.log('[REGISTER] Password too short')
       return NextResponse.json(
         { error: 'Password must be at least 6 characters' },
         { status: 400 }
@@ -30,47 +26,58 @@ export async function POST(req: NextRequest) {
 
     // Check if user already exists
     const existingUser = await db.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     })
 
     if (existingUser) {
-      console.log('[REGISTER] Email already registered:', email)
       return NextResponse.json(
         { error: 'Email already registered' },
-        { status: 400 }
+        { status: 409 }
       )
     }
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10)
 
-    // Create user
+    // Create user with initial username
     const user = await db.user.create({
       data: {
-        email,
+        email: normalizedEmail,
         password: hashedPassword,
-        name,
+        name: name.trim(),
+        username: normalizedEmail.split('@')[0] + '_' + nanoid(8),
+        role: 'CLIENT', // Default role
       },
     })
 
-    console.log('[REGISTER] User created successfully:', user.id, 'Email:', user.email)
+    // Create default client profile
+    await db.client.create({
+      data: {
+        userId: user.id,
+        company: null,
+        description: null,
+      },
+    })
 
     return NextResponse.json(
       {
         success: true,
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
+        data: {
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            username: user.username,
+          },
         },
+        message: 'Registration successful',
       },
       { status: 201 }
     )
   } catch (error: any) {
     console.error('[REGISTER_ERROR]', error?.message || error)
-    const errorMessage = error?.message || 'An error occurred during registration'
     return NextResponse.json(
-      { error: errorMessage },
+      { error: error?.message || 'An error occurred during registration' },
       { status: 500 }
     )
   }
