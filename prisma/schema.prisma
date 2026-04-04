@@ -29,6 +29,10 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+<<<<<<< HEAD
+=======
+  @@index([userId])
+>>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
   @@map(name: "accounts")
 }
 
@@ -39,6 +43,10 @@ model Session {
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+<<<<<<< HEAD
+=======
+  @@index([userId])
+>>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
   @@map(name: "sessions")
 }
 
@@ -54,6 +62,14 @@ model User {
   hasPaid       Boolean?  @default(false)
   username      String?   @unique
   
+<<<<<<< HEAD
+=======
+  // Account status
+  isVerified    Boolean   @default(false)
+  isSuspended   Boolean   @default(false)
+  lastLogin     DateTime?
+  
+>>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
   // Role-based fields
   role          String?   @default("CLIENT") // "CLIENT" | "FREELANCER"
   walletBalance Decimal   @default(0) @db.Decimal(12, 2)
@@ -79,6 +95,13 @@ model User {
   stripePriceId          String?   @map(name: "stripe_price_id")
   stripeCurrentPeriodEnd DateTime? @map(name: "stripe_current_period_end")
 
+<<<<<<< HEAD
+=======
+  @@index([email])
+  @@index([role])
+  @@index([isSuspended])
+  @@index([createdAt])
+>>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
   @@map(name: "users")
 }
 
@@ -127,6 +150,11 @@ model Template {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+<<<<<<< HEAD
+=======
+  @@index([category])
+  @@index([createdAt])
+>>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
   @@map(name: "templates")
 }
 
@@ -149,6 +177,14 @@ model Project {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   
+<<<<<<< HEAD
+=======
+  @@index([creatorId])
+  @@index([submiterId])
+  @@index([status])
+  @@index([category])
+  @@index([createdAt])
+>>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
   @@map(name: "projects")
 }
 
@@ -171,6 +207,13 @@ model Request {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   
+<<<<<<< HEAD
+=======
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([status])
+  @@index([createdAt])
+>>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
   @@map(name: "requests")
 }
 
@@ -202,6 +245,15 @@ model Transaction {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   
+<<<<<<< HEAD
+=======
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([createdAt])
+>>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
   @@map(name: "transactions")
 }
 
@@ -232,6 +284,12 @@ model ActivityLog {
   
   createdAt     DateTime @default(now())
   
+<<<<<<< HEAD
+=======
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+>>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
   @@map(name: "activity_logs")
 }
 
