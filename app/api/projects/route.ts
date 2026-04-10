@@ -234,40 +234,6 @@ export async function PATCH(req: NextRequest) {
       },
     })
 
-<<<<<<< HEAD
-=======
-    // Log activity
-    await db.activityLog.create({
-      data: {
-        userId,
-        action: 'PROJECT_UPDATED',
-        description: `Updated project status to ${status}`,
-        metadata: { projectId },
-      },
-    }).catch(err => console.error('[ACTIVITY_LOG_ERROR]', err))
-
-    return successResponse(
-      {
-        id: updatedProject.id,
-        title: updatedProject.title,
-        status: updatedProject.status,
-        creator: updatedProject.creator,
-        submitter: updatedProject.submitter,
-        updatedAt: updatedProject.updatedAt,
-      },
-      200,
-      'Project updated successfully'
-    )
-  } catch (error) {
-    console.error('[PROJECTS_PATCH_ERROR]', error)
-    return handleApiError(error)
-  }
-}
-        submitter: { select: { id: true, name: true, email: true } },
-      },
-    })
-
->>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
     // Log activity (non-blocking)
     if (status === 'IN_PROGRESS') {
       try {
@@ -300,3 +266,4 @@ export async function PATCH(req: NextRequest) {
     return handleApiError(error)
   }
 }
+

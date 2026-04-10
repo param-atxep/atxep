@@ -14,10 +14,7 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: '/login',
-<<<<<<< HEAD
-=======
     error: '/login',
->>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
   },
   providers: [
     CredentialsProvider({
@@ -43,14 +40,10 @@ export const authOptions: NextAuthOptions = {
             throw new Error('User account not found. Please create an account first.')
           }
 
-<<<<<<< HEAD
-=======
           // Check if account is suspended
           if (user.isSuspended) {
             throw new Error('This account has been suspended. Please contact support.')
           }
-
->>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
           // If user has no password, they signed up with OAuth only
           if (!user.password) {
             throw new Error('This account was created with Google/GitHub only. Please login using Google or GitHub instead.')
@@ -62,15 +55,11 @@ export const authOptions: NextAuthOptions = {
             throw new Error('Incorrect password')
           }
 
-<<<<<<< HEAD
-=======
           // Update last login
           await db.user.update({
             where: { id: user.id },
             data: { lastLogin: new Date() },
           }).catch(err => console.error('[AUTH] Error updating lastLogin:', err))
-
->>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
           return {
             id: user.id,
             email: user.email,
@@ -83,21 +72,13 @@ export const authOptions: NextAuthOptions = {
       },
     }),
     GoogleProvider({
-<<<<<<< HEAD
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      allowDangerousEmailAccountLinking: true,
-    }),
-    GitHubProvider({
-      clientId: process.env.GITHUB_CLIENT_ID!,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-=======
       clientId: process.env.GOOGLE_CLIENT_ID || '',
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
       allowDangerousEmailAccountLinking: true,
     }),
     GitHubProvider({
       clientId: process.env.GITHUB_CLIENT_ID || '',
+      clientSecret: process.env.GITHUB_CLIENT_SECRET || '',
       clientSecret: process.env.GITHUB_CLIENT_SECRET || '',
 >>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
       allowDangerousEmailAccountLinking: true,
@@ -114,15 +95,6 @@ export const authOptions: NextAuthOptions = {
           
           await db.user.upsert({
             where: { email: normalizedEmail },
-<<<<<<< HEAD
-            update: {},
-            create: {
-              email: normalizedEmail,
-              name: user.name || 'User',
-              image: user.image,
-              role: 'CLIENT',
-              username: nanoid(10),
-=======
             update: {
               lastLogin: new Date(),
               isVerified: true, // OAuth users are verified
@@ -141,7 +113,6 @@ export const authOptions: NextAuthOptions = {
             },
             include: {
               client: true,
->>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
             },
           })
         }
@@ -154,8 +125,6 @@ export const authOptions: NextAuthOptions = {
     },
 
     async session({ token, session }) {
-<<<<<<< HEAD
-=======
       if (token && session.user) {
         session.user.id = token.id as string
         session.user.email = token.email || ''
@@ -300,3 +269,4 @@ export async function getAuthSession() {
 export const getAuthSession = () => getServerSession(authOptions)
 
 // export { getServerSession }
+
