@@ -1,25 +1,8 @@
-<<<<<<< HEAD
-import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import bcrypt from 'bcryptjs'
-import { nanoid } from 'nanoid'
-
-export async function POST(req: NextRequest) {
-  try {
-    const { email, password, name, mobile } = await req.json()
-
-    // Validation
-    if (!email || !password || !name) {
-      return NextResponse.json(
-        { error: 'Missing required fields: email, password, name' },
-        { status: 400 }
-      )
-=======
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import { nanoid } from 'nanoid'
-import { successResponse, errorResponse, ValidationError, ConflictError, isValidEmail } from '@/lib/api-utils'
+import { successResponse, errorResponse, ConflictError, isValidEmail } from '@/lib/api-utils'
 import { rateLimit, AUTH_RATE_LIMIT } from '@/lib/rate-limit'
 
 export async function POST(req: NextRequest) {
@@ -40,18 +23,11 @@ export async function POST(req: NextRequest) {
 
     if (!isValidEmail(email)) {
       return errorResponse(400, 'Invalid email format')
->>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
     }
 
     const normalizedEmail = email.toLowerCase().trim()
 
     if (password.length < 6) {
-<<<<<<< HEAD
-      return NextResponse.json(
-        { error: 'Password must be at least 6 characters' },
-        { status: 400 }
-      )
-=======
       return errorResponse(400, 'Password must be at least 6 characters')
     }
 
@@ -61,7 +37,6 @@ export async function POST(req: NextRequest) {
 
     if (name.trim().length > 100) {
       return errorResponse(400, 'Name must be less than 100 characters')
->>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
     }
 
     // Check if user already exists
@@ -70,22 +45,11 @@ export async function POST(req: NextRequest) {
     })
 
     if (existingUser) {
-<<<<<<< HEAD
-      return NextResponse.json(
-        { error: 'Email already registered' },
-        { status: 409 }
-      )
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10)
-=======
       return errorResponse(409, 'Email already registered. Please login instead.')
     }
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12)
->>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
 
     // Create user with initial username
     const user = await db.user.create({
@@ -94,44 +58,6 @@ export async function POST(req: NextRequest) {
         password: hashedPassword,
         name: name.trim(),
         username: normalizedEmail.split('@')[0] + '_' + nanoid(8),
-<<<<<<< HEAD
-        role: 'CLIENT', // Default role
-      },
-    })
-
-    // Create default client profile
-    await db.client.create({
-      data: {
-        userId: user.id,
-        company: null,
-        description: null,
-      },
-    })
-
-    return NextResponse.json(
-      {
-        success: true,
-        data: {
-          user: {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            username: user.username,
-          },
-        },
-        message: 'Registration successful',
-      },
-      { status: 201 }
-    )
-  } catch (error: any) {
-    console.error('[REGISTER_ERROR]', error?.message || error)
-    return NextResponse.json(
-      { error: error?.message || 'An error occurred during registration' },
-      { status: 500 }
-    )
-  }
-}
-=======
         role: 'CLIENT',
         isVerified: false, // Require email verification in production
         client: {
@@ -175,5 +101,3 @@ export async function POST(req: NextRequest) {
     return errorResponse(500, error?.message || 'An error occurred during registration')
   }
 }
-
->>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)

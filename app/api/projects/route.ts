@@ -1,26 +1,6 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireAuthWithRole, handleApiError } from '@/lib/auth-middleware'
-<<<<<<< HEAD
-import { successResponse, errorResponse, ValidationError } from '@/lib/api'
-
-/**
- * GET /api/projects
- * Get projects (filter by status, creator, submitter)
- */
-export async function GET(req: NextRequest) {
-  try {
-    const { userId } = await requireAuthWithRole(req)
-
-    const searchParams = req.nextUrl.searchParams
-    const status = searchParams.get('status')
-    const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100)
-    const page = parseInt(searchParams.get('page') || '1')
-    const offset = (page - 1) * limit
-    const myProjects = searchParams.get('my') === 'true'
-
-    // Build where clause
-=======
 import { successResponse, errorResponse, ValidationError, isValidAmount } from '@/lib/api-utils'
 import { rateLimit, API_RATE_LIMIT } from '@/lib/rate-limit'
 
@@ -47,35 +27,12 @@ export async function GET(req: NextRequest) {
     const userId = (await requireAuthWithRole(req)).userId
 
     // Build where clause with validation
->>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
     let where: any = {}
 
     if (myProjects) {
       where.creatorId = userId
     }
 
-<<<<<<< HEAD
-    if (status) {
-      where.status = status
-    }
-
-    const projects = await db.project.findMany({
-      where,
-      include: {
-        creator: {
-          select: { id: true, name: true, email: true, image: true },
-        },
-        submitter: {
-          select: { id: true, name: true, email: true, image: true },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-      skip: offset,
-    })
-
-    const total = await db.project.count({ where })
-=======
     if (status && ['OPEN', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'].includes(status)) {
       where.status = status
     }
@@ -101,7 +58,6 @@ export async function GET(req: NextRequest) {
       }),
       db.project.count({ where }),
     ])
->>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
 
     return successResponse(
       {
@@ -122,10 +78,7 @@ export async function GET(req: NextRequest) {
           page,
           limit,
           total,
-<<<<<<< HEAD
-=======
           pages: Math.ceil(total / limit),
->>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
           hasMore: offset + limit < total,
         },
       },
@@ -144,14 +97,11 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-<<<<<<< HEAD
-=======
     const limited = !(await rateLimit(req, 'api', API_RATE_LIMIT.limit, API_RATE_LIMIT.window))
     if (limited) {
       return errorResponse(429, 'Too many requests. Please try again later.')
     }
 
->>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
     const auth = await requireAuthWithRole(req, 'CLIENT')
     const { userId } = auth
     const body = await req.json()
@@ -159,23 +109,6 @@ export async function POST(req: NextRequest) {
 
     // Validation
     if (!title || typeof title !== 'string' || !title.trim()) {
-<<<<<<< HEAD
-      throw new ValidationError('Valid title is required')
-    }
-    if (!description || typeof description !== 'string' || !description.trim()) {
-      throw new ValidationError('Valid description is required')
-    }
-    if (!budget || isNaN(parseFloat(budget)) || parseFloat(budget) <= 0) {
-      throw new ValidationError('Valid budget is required and must be greater than 0')
-    }
-    if (!category || typeof category !== 'string' || !category.trim()) {
-      throw new ValidationError('Valid category is required')
-    }
-
-    const budgetNum = parseFloat(budget.toString())
-    if (budgetNum > 999999999) {
-      throw new ValidationError('Budget exceeds maximum limit')
-=======
       return errorResponse(400, 'Valid title is required')
     }
 
@@ -197,7 +130,6 @@ export async function POST(req: NextRequest) {
 
     if (!category || typeof category !== 'string' || !category.trim()) {
       return errorResponse(400, 'Valid category is required')
->>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
     }
 
     // Create project
@@ -205,11 +137,7 @@ export async function POST(req: NextRequest) {
       data: {
         title: title.trim(),
         description: description.trim(),
-<<<<<<< HEAD
-        budget: budgetNum,
-=======
         budget: parseFloat(budget.toString()),
->>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
         category: category.trim(),
         deadline: deadline ? new Date(deadline) : null,
         creatorId: userId,
@@ -221,20 +149,6 @@ export async function POST(req: NextRequest) {
     })
 
     // Log activity (non-blocking)
-<<<<<<< HEAD
-    try {
-      await db.activityLog.create({
-        data: {
-          userId,
-          action: 'PROJECT_CREATED',
-          description: `Created project: ${title}`,
-          metadata: { projectId: project.id },
-        },
-      }).catch(err => console.error('[ACTIVITY_LOG_ERROR]', err))
-    } catch (err) {
-      console.error('[ACTIVITY_LOG_ERROR]', err)
-    }
-=======
     await db.activityLog.create({
       data: {
         userId,
@@ -243,7 +157,6 @@ export async function POST(req: NextRequest) {
         metadata: { projectId: project.id },
       },
     }).catch(err => console.error('[ACTIVITY_LOG_ERROR]', err))
->>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
 
     return successResponse(
       {
@@ -268,13 +181,6 @@ export async function POST(req: NextRequest) {
 
 /**
  * PATCH /api/projects/:id
-<<<<<<< HEAD
- * Update project status (accept project for freelancer)
- */
-export async function PATCH(req: NextRequest) {
-  try {
-    const { userId } = await requireAuthWithRole(req, 'FREELANCER')
-=======
  * Update project status
  */
 export async function PATCH(req: NextRequest) {
@@ -285,32 +191,20 @@ export async function PATCH(req: NextRequest) {
     }
 
     const { userId } = await requireAuthWithRole(req)
->>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
     const body = await req.json()
     const { projectId, status } = body
 
     if (!projectId || typeof projectId !== 'string') {
-<<<<<<< HEAD
-      throw new ValidationError('Valid projectId is required')
-    }
-    if (!status || typeof status !== 'string') {
-      throw new ValidationError('Valid status is required')
-=======
       return errorResponse(400, 'Valid projectId is required')
     }
 
     if (!status || typeof status !== 'string') {
       return errorResponse(400, 'Valid status is required')
->>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
     }
 
     const validStatuses = ['OPEN', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']
     if (!validStatuses.includes(status)) {
-<<<<<<< HEAD
-      throw new ValidationError(`Invalid status. Must be one of: ${validStatuses.join(', ')}`)
-=======
       return errorResponse(400, `Invalid status. Must be one of: ${validStatuses.join(', ')}`)
->>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
     }
 
     // Get project
@@ -319,16 +213,12 @@ export async function PATCH(req: NextRequest) {
     })
 
     if (!project) {
-<<<<<<< HEAD
-      throw new ValidationError('Project not found')
-=======
       return errorResponse(404, 'Project not found')
     }
 
     // Check authorization
     if (project.creatorId !== userId && project.submiterId !== userId) {
       return errorResponse(403, 'You do not have permission to update this project')
->>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
     }
 
     // Update project

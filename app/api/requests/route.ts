@@ -1,17 +1,8 @@
-<<<<<<< HEAD
-import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { requireAuth, handleApiError } from '@/lib/auth-middleware'
-import { successResponse, ValidationError } from '@/lib/api'
-import { validateAmount } from '@/lib/commission'
-import { logActivity } from '@/lib/activity'
-=======
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireAuth, handleApiError } from '@/lib/auth-middleware'
 import { successResponse, errorResponse } from '@/lib/api-utils'
 import { rateLimit, API_RATE_LIMIT } from '@/lib/rate-limit'
->>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
 
 /**
  * GET /api/requests
@@ -19,26 +10,18 @@ import { rateLimit, API_RATE_LIMIT } from '@/lib/rate-limit'
  */
 export async function GET(req: NextRequest) {
   try {
-<<<<<<< HEAD
-=======
     const limited = !(await rateLimit(req, 'api', API_RATE_LIMIT.limit, API_RATE_LIMIT.window))
     if (limited) {
       return errorResponse(429, 'Too many requests. Please try again later.')
     }
 
->>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
     const { userId } = await requireAuth(req)
 
     const searchParams = req.nextUrl.searchParams
     const type = searchParams.get('type') // 'sent' or 'received'
     const status = searchParams.get('status')
-<<<<<<< HEAD
-    const limit = parseInt(searchParams.get('limit') || '20')
-    const page = parseInt(searchParams.get('page') || '1')
-=======
     const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100)
     const page = Math.max(parseInt(searchParams.get('page') || '1'), 1)
->>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
     const offset = (page - 1) * limit
 
     // Build where clause
@@ -52,28 +35,21 @@ export async function GET(req: NextRequest) {
       where.OR = [{ senderId: userId }, { receiverId: userId }]
     }
 
-<<<<<<< HEAD
-    if (status) {
-      where.status = status
-    }
-
-    const requests = await db.request.findMany({
-      where,
-      include: {
-        sender: { select: { id: true, name: true, email: true, image: true } },
-        receiver: { select: { id: true, name: true, email: true, image: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-      skip: offset,
-    })
-
-    const total = await db.request.count({ where })
-=======
     if (status && ['PENDING', 'ACCEPTED', 'REJECTED', 'COMPLETED'].includes(status)) {
       where.status = status
     }
 
+    const [requests, total] = await Promise.all([
+      db.request.findMany({
+        where,
+        include: {
+          sender: { select: { id: true, name: true, email: true, image: true } },
+          receiver: { select: { id: true, name: true, email: true, image: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip: offset,
+      }),
     const [requests, total] = await Promise.all([
       db.request.findMany({
         where,
