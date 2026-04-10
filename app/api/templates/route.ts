@@ -1,53 +1,216 @@
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
-import { requireAuthWithRole, handleApiError } from '@/lib/auth-middleware'
-import { successResponse, ValidationError } from '@/lib/api'
-import { logTemplateView, logTemplatePurchase } from '@/lib/activity'
+import { requireAuth, handleApiError } from '@/lib/auth-middleware'
+import { successResponse, errorResponse } from '@/lib/api-utils'
+import { rateLimit, API_RATE_LIMIT } from '@/lib/rate-limit'
 
 /**
  * GET /api/templates
- * Get templates (browse all or filter by category)
+ * Fetch templates (public or user's private templates)
+ * 
+ * Query params:
+ * - search: string (search by name or description)
+ * - category: string (filter by category)
+ * - sort: 'popular' | 'newest' | 'price-low' | 'price-high' (default: 'popular')
+ * - limit: 1-100 (default: 20)
+ * - page: >= 1 (default: 1)
+ * - my: 'true' (if set, only return user's templates, requires auth)
  */
 export async function GET(req: NextRequest) {
   try {
-    const { userId } = await requireAuthWithRole(req)
+    const limited = !(await rateLimit(req, 'api', API_RATE_LIMIT.limit, API_RATE_LIMIT.window))
+    if (limited) {
+      return errorResponse(429, 'Too many requests. Please try again later.')
+    }
 
     const searchParams = req.nextUrl.searchParams
+    const search = searchParams.get('search') || ''
     const category = searchParams.get('category')
-    const search = searchParams.get('search')
+    const sort = searchParams.get('sort') || 'popular'
     const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100)
-    const page = parseInt(searchParams.get('page') || '1')
+    const page = Math.max(parseInt(searchParams.get('page') || '1'), 1)
     const offset = (page - 1) * limit
+    const myTemplates = searchParams.get('my') === 'true'
+
+    // Check auth if requesting personal templates
+    let userId: string | undefined
+    if (myTemplates) {
+      try {
+        const auth = await requireAuth(req)
+        userId = auth.userId
+      } catch {
+        return errorResponse(401, 'Authentication required to view personal templates')
+      }
+    }
 
     // Build where clause
     let where: any = {}
+
+    if (myTemplates && userId) {
+      where.uploaderId = userId
+    } else {
+      where.isPublic = true // Only show public templates
+    }
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+      ]
+    }
 
     if (category) {
       where.category = category
     }
 
-    if (search) {
-      where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-      ]
+    // Build order by
+    let orderBy: any = { downloads: 'desc' }
+    if (sort === 'newest') {
+      orderBy = { createdAt: 'desc' }
+    } else if (sort === 'price-low') {
+      orderBy = { price: 'asc' }
+    } else if (sort === 'price-high') {
+      orderBy = { price: 'desc' }
     }
 
-    const templates = await db.template.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-      skip: offset,
+    // Fetch templates
+    const [templates, total] = await Promise.all([
+      db.template.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          category: true,
+          price: true,
+          image: true,
+          rating: true,
+          downloads: true,
+          features: true,
+          uploader: {
+            select: { id: true, name: true, image: true },
+          },
+          createdAt: true,
+        },
+        orderBy,
+        take: limit,
+        skip: offset,
+      }),
+      db.template.count({ where }),
+    ])
+
+    return successResponse(
+      {
+        templates: templates.map((t) => ({
+          id: t.id,
+          name: t.name,
+          description: t.description,
+          category: t.category,
+          price: t.price?.toNumber() || 0,
+          image: t.image,
+          rating: t.rating,
+          downloads: t.downloads,
+          features: t.features || [],
+          uploader: t.uploader,
+          createdAt: t.createdAt,
+        })),
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit),
+          hasMore: offset + limit < total,
+        },
+      },
+      200,
+      'Templates retrieved successfully'
+    )
+  } catch (error) {
+    console.error('[TEMPLATES_GET_ERROR]', error)
+    return handleApiError(error)
+  }
+}
+
+/**
+ * POST /api/templates
+ * Upload a new template (requires authentication)
+ */
+export async function POST(req: NextRequest) {
+  try {
+    const limited = !(await rateLimit(req, 'api', API_RATE_LIMIT.limit, API_RATE_LIMIT.window))
+    if (limited) {
+      return errorResponse(429, 'Too many requests. Please try again later.')
+    }
+
+    const { userId } = await requireAuth(req)
+    const body = await req.json()
+
+    // Validation
+    const { name, description, category, price, image, features, githubUrl, previewUrl, isPublic } = body
+
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      return errorResponse(400, 'Template name is required')
+    }
+
+    if (!category || typeof category !== 'string') {
+      return errorResponse(400, 'Category is required')
+    }
+
+    if (price !== undefined && (typeof price !== 'number' || price < 0)) {
+      return errorResponse(400, 'Price must be a non-negative number')
+    }
+
+    // Create template
+    const template = await db.template.create({
+      data: {
+        name: name.trim(),
+        description: description?.trim() || '',
+        category,
+        price: price ? parseFloat(price) : 0,
+        image: image || null,
+        features: features || [],
+        githubUrl: githubUrl || null,
+        previewUrl: previewUrl || null,
+        isPublic: isPublic !== false,
+        uploaderId: userId,
+        rating: 5,
+        downloads: 0,
+      },
+      include: {
+        uploader: { select: { id: true, name: true, image: true } },
+      },
     })
 
-    const total = await db.template.count({ where })
+    // Log activity
+    await db.activityLog.create({
+      data: {
+        userId,
+        action: 'TEMPLATE_UPLOADED',
+        description: `Uploaded template: ${name}`,
+        metadata: { templateId: template.id },
+      },
+    }).catch((err: any) => console.error('[ACTIVITY_LOG_ERROR]', err))
 
-    // Log template views for each template (non-blocking)
-    try {
-      for (const template of templates) {
-        await logTemplateView(userId, template.id, template.title).catch(err =>
-          console.error('[ACTIVITY_LOG_ERROR]', err)
-        )
+    return successResponse(
+      {
+        id: template.id,
+        name: template.name,
+        description: template.description,
+        category: template.category,
+        price: template.price?.toNumber() || 0,
+        image: template.image,
+        isPublic: template.isPublic,
+        uploader: template.uploader,
+        createdAt: template.createdAt,
+      },
+      201,
+      'Template uploaded successfully'
+    )
+  } catch (error) {
+    console.error('[TEMPLATES_POST_ERROR]', error)
+    return handleApiError(error)
+  }
+}
       }
     } catch (err) {
       console.error('[ACTIVITY_LOG_ERROR]', err)
