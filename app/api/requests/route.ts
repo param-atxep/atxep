@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireAuth, handleApiError } from '@/lib/auth-middleware'
 import { successResponse, errorResponse } from '@/lib/api-utils'
@@ -6,7 +6,13 @@ import { rateLimit, API_RATE_LIMIT } from '@/lib/rate-limit'
 
 /**
  * GET /api/requests
- * Get work requests (sent or received)
+ * ALTFaze: Fetch user's work requests (sent or received)
+ * 
+ * Query params:
+ * - type: 'sent' | 'received' | undefined (all)
+ * - status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'COMPLETED'
+ * - limit: 1-100 (default: 20)
+ * - page: >= 1 (default: 1)
  */
 export async function GET(req: NextRequest) {
   try {
@@ -43,8 +49,24 @@ export async function GET(req: NextRequest) {
       db.request.findMany({
         where,
         include: {
-          sender: { select: { id: true, name: true, email: true, image: true } },
-          receiver: { select: { id: true, name: true, email: true, image: true } },
+          sender: { 
+            select: { 
+              id: true, 
+              name: true, 
+              email: true, 
+              image: true,
+              role: true
+            } 
+          },
+          receiver: { 
+            select: { 
+              id: true, 
+              name: true, 
+              email: true, 
+              image: true,
+              role: true
+            } 
+          },
         },
         orderBy: { createdAt: 'desc' },
         take: limit,
@@ -212,12 +234,19 @@ export async function PATCH(req: NextRequest) {
     })
 
     // Log activity
+    const actionMap: Record<string, string> = {
+      ACCEPTED: 'REQUEST_ACCEPTED',
+      REJECTED: 'REQUEST_REJECTED',
+      COMPLETED: 'REQUEST_COMPLETED',
+      PENDING: 'REQUEST_PENDING',
+    }
+
     await db.activityLog.create({
       data: {
         userId,
-        action: 'REQUEST_UPDATED',
-        description: `Updated request status to ${status}`,
-        metadata: { requestId },
+        action: actionMap[status] || 'REQUEST_UPDATED',
+        description: `Request status updated to ${status}`,
+        metadata: { requestId, previousStatus: request.status, newStatus: status },
       },
     }).catch((err: any) => console.error('[ACTIVITY_LOG_ERROR]', err))
 
@@ -235,6 +264,65 @@ export async function PATCH(req: NextRequest) {
     )
   } catch (error) {
     console.error('[REQUESTS_PATCH_ERROR]', error)
+    return handleApiError(error)
+  }
+}
+
+/**
+ * DELETE /api/requests
+ * Cancel/delete a request (only sender can delete)
+ */
+export async function DELETE(req: NextRequest) {
+  try {
+    const limited = !(await rateLimit(req, 'api', API_RATE_LIMIT.limit, API_RATE_LIMIT.window))
+    if (limited) {
+      return errorResponse(429, 'Too many requests. Please try again later.')
+    }
+
+    const { userId } = await requireAuth(req)
+    const body = await req.json()
+    const { requestId } = body
+
+    if (!requestId || typeof requestId !== 'string') {
+      return errorResponse(400, 'Valid requestId is required')
+    }
+
+    // Get request
+    const request = await db.request.findUnique({
+      where: { id: requestId },
+    })
+
+    if (!request) {
+      return errorResponse(404, 'Request not found')
+    }
+
+    // Check authorization (only sender can delete)
+    if (request.senderId !== userId) {
+      return errorResponse(403, 'You do not have permission to delete this request')
+    }
+
+    // Delete request
+    await db.request.delete({
+      where: { id: requestId },
+    })
+
+    // Log activity
+    await db.activityLog.create({
+      data: {
+        userId,
+        action: 'REQUEST_DELETED',
+        description: `Deleted request: ${request.title}`,
+        metadata: { requestId },
+      },
+    }).catch((err: any) => console.error('[ACTIVITY_LOG_ERROR]', err))
+
+    return successResponse(
+      { id: requestId },
+      200,
+      'Request deleted successfully'
+    )
+  } catch (error) {
+    console.error('[REQUESTS_DELETE_ERROR]', error)
     return handleApiError(error)
   }
 }
