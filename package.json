@@ -7,9 +7,6 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-<<<<<<< HEAD
-    "postinstall": "prisma generate"
-=======
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
@@ -17,7 +14,6 @@
     "db:reset": "prisma migrate reset --force",
     "type-check": "tsc --noEmit",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\""
->>>>>>> 6562c65 (Fixing All The Problems & Adding The Exception Handling)
   },
   "dependencies": {
     "@next-auth/prisma-adapter": "^1.0.7",
