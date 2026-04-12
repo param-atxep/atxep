@@ -4,6 +4,9 @@ import { requireAuth, handleApiError } from '@/lib/auth-middleware'
 import { successResponse, errorResponse } from '@/lib/api-utils'
 import { rateLimit, API_RATE_LIMIT } from '@/lib/rate-limit'
 
+// Force dynamic rendering - always get fresh data from DB
+export const dynamic = 'force-dynamic'
+
 /**
  * GET /api/requests
  * ALTFaze: Fetch user's work requests (sent or received)

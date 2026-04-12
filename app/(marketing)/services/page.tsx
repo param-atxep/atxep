@@ -4,8 +4,8 @@ import Link from "next/link";
 import React from "react";
 
 export const metadata = {
-  title: "Services | ATXEP - Freelance Platform",
-  description: "Discover all ATXEP services: hire freelancers, become a freelancer, build projects, buy templates, and get professional help.",
+  title: "Services | ALTFaze - Freelance Platform",
+  description: "Discover all ALTFaze services: hire freelancers, become a freelancer, build projects, buy templates, and get professional help.",
 };
 
 export default function ServicesPage() {
@@ -66,7 +66,7 @@ export default function ServicesPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-muted-foreground">
-                Join thousands of successful freelancers earning on ATXEP. Showcase your work, manage projects, and build a sustainable income stream.
+                Join thousands of successful freelancers earning on ALTFaze. Showcase your work, manage projects, and build a sustainable income stream.
               </p>
               <ul className="space-y-2 text-sm">
                 <li className="flex items-center gap-2">
@@ -234,7 +234,7 @@ export default function ServicesPage() {
             Ready to Get Started?
           </h2>
           <p className="max-w-[85%] leading-normal text-muted-foreground sm:text-lg sm:leading-7">
-            Join thousands of professionals and businesses using ATXEP to succeed.
+            Join thousands of professionals and businesses using ALTFaze to succeed.
           </p>
           <div className="space-x-4 pt-4">
             <Link href="/login">

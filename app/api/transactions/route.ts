@@ -2,6 +2,9 @@ import { getAuthSession } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 
+// Force dynamic rendering - always get fresh data from DB
+export const dynamic = 'force-dynamic'
+
 export async function POST(req: NextRequest) {
   try {
     const session = await getAuthSession()
@@ -63,6 +66,7 @@ export async function POST(req: NextRequest) {
     })
 
     // Update wallet balance based on transaction type
+    // THIS MUST SUCCEED - if it fails, data consistency is broken
     try {
       if (type === "EARNING") {
         await db.user.update({
@@ -88,10 +92,18 @@ export async function POST(req: NextRequest) {
           },
         })
       }
-    } catch (err) {
-      console.error("[TRANSACTION_UPDATE_ERROR]", err)
-      // Transaction created but balance update failed - still return success
-      // The transaction record exists for audit trail
+    } catch (walletErr) {
+      console.error("[TRANSACTION_WALLET_UPDATE_FAILED]", walletErr)
+      // Delete the transaction we just created since wallet update failed
+      // This prevents data inconsistency
+      await db.transaction.delete({
+        where: { id: transaction.id }
+      }).catch(delErr => console.error("[TRANSACTION_ROLLBACK_FAILED]", delErr))
+      
+      return NextResponse.json(
+        { error: "Failed to update wallet. Transaction rolled back. Please try again." },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json(

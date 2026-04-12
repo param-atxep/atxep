@@ -34,7 +34,7 @@ export function MainNav() {
       <Link href="/" className="lg:mr-6 sm:mr-0 flex items-center gap-2">
         <Icons.logo className="h-6 w-6 hidden lg:block md:block" />
         <span className="font-bold hidden lg:block md:block">ALTFaze</span>
-        <Badge className="hidden lg:block md:block">Beta</Badge>
+        <Badge className="hidden lg:block md:block">Pro</Badge>
       </Link>
       <NavigationMenu className="hidden lg:block">
         <NavigationMenuList>

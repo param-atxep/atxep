@@ -6,6 +6,9 @@ import { createCheckoutSession } from '@/lib/stripe'
 import { logPaymentCompletion } from '@/lib/activity'
 import { rateLimit, API_RATE_LIMIT } from '@/lib/rate-limit'
 
+// Force dynamic rendering for payment operations
+export const dynamic = 'force-dynamic'
+
 export async function POST(req: NextRequest) {
   try {
     const limited = !(await rateLimit(req, 'api', API_RATE_LIMIT.limit, API_RATE_LIMIT.window))
@@ -48,7 +51,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Create Stripe checkout session
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3002'
     
     try {
       const session = await createCheckoutSession({

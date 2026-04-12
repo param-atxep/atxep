@@ -11,6 +11,8 @@ export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(db),
   session: {
     strategy: 'jwt',
+    maxAge: 24 * 60 * 60, // 24 hour session expiration
+    updateAge: 60 * 60,   // Refresh token every hour
   },
   pages: {
     signIn: '/login',
@@ -60,6 +62,9 @@ export const authOptions: NextAuthOptions = {
             where: { id: user.id },
             data: { lastLogin: new Date() },
           }).catch(err => console.error('[AUTH] Error updating lastLogin:', err))
+
+          console.log('[AUTH] Credentials login successful for:', email)
+
           return {
             id: user.id,
             email: user.email,
@@ -67,6 +72,7 @@ export const authOptions: NextAuthOptions = {
             image: user.image,
           }
         } catch (error: any) {
+          console.error('[AUTH] Credentials authorization failed:', error.message)
           throw new Error(error.message || 'Authentication failed')
         }
       },
@@ -91,34 +97,57 @@ export const authOptions: NextAuthOptions = {
 
           const normalizedEmail = user.email.toLowerCase().trim()
           
-          await db.user.upsert({
+          // ✅ FIXED: Check for suspension during OAuth signin
+          const existingUser = await db.user.findUnique({
             where: { email: normalizedEmail },
-            update: {
-              lastLogin: new Date(),
-              isVerified: true, // OAuth users are verified
-            },
-            create: {
-              email: normalizedEmail,
-              name: user.name || profile?.name || 'User',
-              image: user.image || profile?.image,
-              role: 'CLIENT',
-              username: nanoid(10),
-              isVerified: true, // OAuth users are verified
-              // Create default client profile
-              client: {
-                create: {},
-              },
-            },
-            include: {
-              client: true,
-            },
+            select: { isSuspended: true, id: true }
           })
+
+          if (existingUser?.isSuspended) {
+            console.warn('[AUTH] Suspended user attempted OAuth login:', normalizedEmail)
+            return false
+          }
+          
+          // ✅ FIXED: Use create-only to prevent duplicate client profiles  
+          // Only create if doesn't exist, don't upsert
+          const dbUser = await db.user.findUnique({
+            where: { email: normalizedEmail },
+          })
+
+          if (!dbUser) {
+            // Create new user
+            await db.user.create({
+              data: {
+                email: normalizedEmail,
+                name: user.name || profile?.name || 'User',
+                image: user.image || profile?.image,
+                role: 'CLIENT',
+                username: nanoid(10),
+                isVerified: true, // OAuth users are verified
+                // Create default client profile
+                client: {
+                  create: {},
+                },
+              },
+              include: {
+                client: true,
+              },
+            })
+          } else {
+            // User exists - just update login time
+            await db.user.update({
+              where: { email: normalizedEmail },
+              data: {
+                lastLogin: new Date(),
+                isVerified: true,
+              },
+            })
+          }
         }
         return true
       } catch (error: any) {
         console.error('[AUTH] SignIn callback error:', error)
-        // Allow signin even if upsert fails - adapter will handle
-        return true
+        return false  // ✅ FIXED: Return false on error instead of allowing signin
       }
     },
 
@@ -135,31 +164,49 @@ export const authOptions: NextAuthOptions = {
       return session
     },
 
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       if (user) {
         token.id = user.id
         token.email = user.email
       }
 
-      // Load user data from DB
+      // ✅ FIXED: Verify user still exists and check suspension on every token refresh
       try {
-        if (token.email) {
+        const emailToUse = token.email || user?.email
+        if (emailToUse) {
           const dbUser = await db.user.findUnique({
-            where: { email: token.email },
-          })
-          if (dbUser) {
-            token.id = dbUser.id
-            token.username = dbUser.username || ''
-            token.role = dbUser.role || 'CLIENT'
-            // Check if account is suspended
-            if ((dbUser as any).isSuspended) {
-              return { ...token, isSuspended: true }
+            where: { email: emailToUse.toLowerCase().trim() },
+            select: {
+              id: true,
+              email: true,
+              username: true,
+              role: true,
+              isSuspended: true,
             }
+          })
+          
+          if (!dbUser) {
+            // User deleted - invalidate token
+            console.warn('[JWT] User not found - invalidating token:', emailToUse)
+            return { ...token, invalid: true }
           }
+
+          if (dbUser.isSuspended) {
+            // User suspended - invalidate token
+            console.warn('[JWT] Suspended user token refresh attempt:', emailToUse)
+            return { ...token, isSuspended: true }
+          }
+
+          token.id = dbUser.id
+          token.email = dbUser.email
+          token.username = dbUser.username || ''
+          token.role = dbUser.role || 'CLIENT'
+          token.isSuspended = false
         }
       } catch (error) {
         console.error('[JWT] Error loading user data:', error)
-        // Continue with existing token data if lookup fails
+        // On error, invalidate the token to force re-authentication
+        return { ...token, invalid: true }
       }
 
       return token

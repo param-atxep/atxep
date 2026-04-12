@@ -4,6 +4,9 @@ import { requireAuthWithRole, handleApiError } from '@/lib/auth-middleware'
 import { successResponse, errorResponse, ValidationError, isValidAmount } from '@/lib/api-utils'
 import { rateLimit, API_RATE_LIMIT } from '@/lib/rate-limit'
 
+// Force dynamic rendering - always get fresh data from DB
+export const dynamic = 'force-dynamic'
+
 /**
  * GET /api/projects
  * Get projects (filter by status, category, creator, etc.)

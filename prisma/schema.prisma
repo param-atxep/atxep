@@ -79,6 +79,7 @@ model User {
   requestsReceived Request[] @relation("RequestReceiver")
   transactions  Transaction[]
   activities    ActivityLog[]
+  templatePurchases TemplatePurchase[]  // Templates purchased by this user
   
   // Stripe integration
   stripeCustomerId       String?   @unique @map(name: "stripe_customer_id")
@@ -135,10 +136,42 @@ model Template {
   price         Decimal  @db.Decimal(10, 2)
   
   features      String[] // Array of features
+  uploaderId    String?  // Optional - may not be tracked in original schema
+  
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  // Relations for purchases and tracking
+  purchases     TemplatePurchase[]
+  activities    ActivityLog[]
+
   @@map(name: "templates")
+}
+
+model TemplatePurchase {
+  id            String   @id @default(cuid())
+  
+  templateId    String
+  template      Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  purchasePrice Decimal  @db.Decimal(10, 2)
+  downloadToken String   @unique  // Token for secure download
+  
+  status        String   @default("COMPLETED") // "PENDING", "COMPLETED", "REFUNDED"
+  
+  transactionId String?  // Reference to transaction if paid
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@unique([userId, templateId])
+  @@map(name: "template_purchases")
+  @@index([templateId])
+  @@index([userId])
+  @@index([transactionId])
 }
 
 model Project {
@@ -208,6 +241,10 @@ model Transaction {
   requestId     String?
   templateId    String?
   
+  // Resource tracking for related items
+  relatedResourceType String?  // "TEMPLATE", "PROJECT", "REQUEST"
+  relatedResourceId   String?  // The ID of the related resource
+  
   metadata      Json?    // Additional data storage
   
   createdAt     DateTime @default(now())
@@ -239,7 +276,16 @@ model ActivityLog {
   
   action        String   // "TEMPLATE_VIEWED", "PURCHASE", "PROJECT_CREATED", "REQUEST_SENT"
   description   String?
+  
+  // Resource tracking
+  resourceType  String?  // "TEMPLATE", "PROJECT", "REQUEST", "TRANSACTION"
+  resourceId    String?  // The ID of the related resource
+  
   metadata      Json?    // Flexible data storage
+  
+  // Optional template relation for convenience
+  templateId    String?
+  template      Template? @relation(fields: [templateId], references: [id], onDelete: Cascade)
   
   createdAt     DateTime @default(now())
   

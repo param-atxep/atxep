@@ -36,3 +36,34 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+
+# Scripts and setup files (not needed in repo)
+*.bat
+*.sh
+setup-db.*
+
+# Documentation files (except main README)
+BACKEND_*.md
+PRODUCTION_*.md
+DEPLOYMENT_*.md
+DETAILED_*.md
+CHANGELOG.md
+FIXES_*.md
+IMPLEMENTATION_*.md
+QUICK_*.md
+ROUTING_*.md
+SECURITY_*.md
+TROUBLESHOOTING.md
+SETUP_*.md
+TRANSFORMATION_*.md
+DOCS_*.md
+License.md
+build-output.txt

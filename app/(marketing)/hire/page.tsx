@@ -6,7 +6,7 @@ import Link from "next/link";
 import React from "react";
 
 export const metadata = {
-  title: "Hire Freelancers | ATXEP - Find Top Talent",
+  title: "Hire Freelancers | ALTFaze - Find Top Talent",
   description: "Hire vetted freelancers for web development, design, marketing, and more. Find the perfect talent for your project.",
 };
 
@@ -96,7 +96,7 @@ export default function HireFreelancersPage() {
       <section className="container bg-slate-50 dark:bg-slate-900 rounded-lg py-12 md:py-16 my-8">
         <div className="space-y-8">
           <div className="text-center space-y-2">
-            <h2 className="font-heading text-2xl sm:text-3xl md:text-4xl">Why Hire on ATXEP?</h2>
+            <h2 className="font-heading text-2xl sm:text-3xl md:text-4xl">Why Hire on ALTFaze?</h2>
             <p className="text-muted-foreground">Everything you need for a successful project</p>
           </div>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

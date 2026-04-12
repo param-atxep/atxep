@@ -5,7 +5,7 @@ import Link from "next/link";
 import React from "react";
 
 export const metadata = {
-  title: "Build Projects | ATXEP - Project Management",
+  title: "Build Projects | ALTFaze - Project Management",
   description: "Manage and collaborate on projects with freelancers. Track progress, set milestones, and deliver on time.",
 };
 
@@ -150,7 +150,7 @@ export default function ProjectsPage() {
         </div>
       </section>
 
-      {/* Why ATXEP Projects Section */}
+      {/* Why ALTFaze Projects Section */}
       <section className="container py-8 md:py-12">
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <Card className="border-0 shadow-md">

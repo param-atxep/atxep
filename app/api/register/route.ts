@@ -5,6 +5,9 @@ import { nanoid } from 'nanoid'
 import { successResponse, errorResponse, ConflictError, isValidEmail } from '@/lib/api-utils'
 import { rateLimit, AUTH_RATE_LIMIT } from '@/lib/rate-limit'
 
+// Force dynamic rendering for auth operations
+export const dynamic = 'force-dynamic'
+
 export async function POST(req: NextRequest) {
   try {
     // Rate limiting

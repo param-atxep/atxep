@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 
+// Force dynamic rendering - never cache user registration
+export const dynamic = 'force-dynamic'
+
+/**
+ * POST /api/auth/register
+ * Register a new user with email/password
+ * 
+ * SECURITY: This is a CRITICAL auth route
+ * - Must never be cached (user creation must happen fresh each time)
+ * - Must validate email uniqueness at request time
+ * - Must hash passwords before storage
+ */
 export async function POST(req: NextRequest) {
   try {
     const { email, password, name, mobile } = await req.json()

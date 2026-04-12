@@ -32,33 +32,81 @@ export function UserAuthForm({ className, isSignUp = false, ...props }: UserAuth
 
     try {
       if (isSignUp) {
-        // Signup
+        // Validate form inputs
+        if (!name.trim()) {
+          setError('Please enter your name');
+          setIsLoading(false);
+          return;
+        }
+        if (!email.trim()) {
+          setError('Please enter your email');
+          setIsLoading(false);
+          return;
+        }
+        if (password.length < 6) {
+          setError('Password must be at least 6 characters');
+          setIsLoading(false);
+          return;
+        }
+
+        // Signup - Send form data in body
         const res = await fetch('/api/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: name.trim(),
+            email: email.trim(),
+            password,
+            mobile: mobile.trim() || null,
+          }),
         });
 
         const data = await res.json();
 
         if (!res.ok) {
+          const errorMsg = data.message || data.error || 'Failed to create account';
+          setError(errorMsg);
           setIsLoading(false);
           return;
         }
 
         toast({
           title: 'Success',
-          description: 'Account created. Redirecting to login...',
+          description: 'Account created! Logging you in...',
         });
 
-        // Clear form
-        setEmail('');
-        setPassword('');
-        setName('');
-        setMobile('');
-        setIsLoading(false);
+        // Automatically log in after signup
+        const loginResult = await signIn('credentials', {
+          email: email.trim(),
+          password,
+          redirect: false,
+        });
 
-        // Replace history and redirect
-        router.replace('/login');
+        if (loginResult?.ok) {
+          // Clear form
+          setEmail('');
+          setPassword('');
+          setName('');
+          setMobile('');
+          setIsLoading(false);
+
+          toast({
+            title: 'Welcome!',
+            description: 'Redirecting to setup...',
+          });
+
+          // Redirect to onboard (don't wait, let the redirect handler authenticate)
+          router.push('/onboard');
+        } else {
+          // If auto-login fails, redirect to login page
+          setEmail('');
+          setPassword('');
+          setName('');
+          setMobile('');
+          setIsLoading(false);
+
+          router.replace('/login');
+        }
       } else {
         // Login
         const result = await signIn('credentials', {

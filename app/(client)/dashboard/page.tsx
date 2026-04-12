@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -9,6 +9,9 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import Link from 'next/link'
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 interface Request {
   id: string
@@ -54,50 +57,65 @@ const StatusBadge = ({ status }: { status: string }) => {
 }
 
 export default function ClientDashboard() {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const router = useRouter()
   
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isClient, setIsClient] = useState(false)
+
+  // Prevent hydration mismatch
+  useEffect(() => {
+    setIsClient(true)
+    console.log('🟢 [CLIENT_DASHBOARD] Page mounted, status:', status, 'role:', session?.user?.role)
+  }, [status, session?.user?.role])
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const res = await fetch('/api/requests?type=sent&limit=50', {
+        cache: 'no-store',
+      })
+      if (!res.ok) {
+        throw new Error('Failed to fetch requests')
+      }
+
+      const result = await res.json()
+      const requests = result.data.requests || []
+
+      const stats = {
+        totalRequests: result.data.pagination.total,
+        totalSent: requests.length,
+        totalAccepted: requests.filter((r: Request) => r.status === 'ACCEPTED').length,
+        totalCompleted: requests.filter((r: Request) => r.status === 'COMPLETED').length,
+        totalBudget: requests.reduce((sum: number, r: Request) => sum + (r.amount || 0), 0),
+      }
+
+      setData({
+        requests,
+        ...stats,
+        pagination: result.data.pagination,
+      })
+    } catch (err) {
+      console.error('Dashboard error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load dashboard')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-
-        const res = await fetch('/api/requests?type=sent&limit=50')
-        if (!res.ok) {
-          throw new Error('Failed to fetch requests')
-        }
-
-        const result = await res.json()
-        const requests = result.data.requests || []
-
-        const stats = {
-          totalRequests: result.data.pagination.total,
-          totalSent: requests.length,
-          totalAccepted: requests.filter((r: Request) => r.status === 'ACCEPTED').length,
-          totalCompleted: requests.filter((r: Request) => r.status === 'COMPLETED').length,
-          totalBudget: requests.reduce((sum: number, r: Request) => sum + (r.amount || 0), 0),
-        }
-
-        setData({
-          requests,
-          ...stats,
-          pagination: result.data.pagination,
-        })
-      } catch (err) {
-        console.error('Dashboard error:', err)
-        setError(err instanceof Error ? err.message : 'Failed to load dashboard')
-      } finally {
-        setLoading(false)
-      }
+    if (isClient && status === 'authenticated') {
+      console.log('✅ [CLIENT_DASHBOARD] Authenticated, fetching data')
+      fetchData()
+    } else if (isClient && status === 'unauthenticated') {
+      console.log('⚠️ [CLIENT_DASHBOARD] Unauthenticated, redirecting to login')
+      router.push('/login')
     }
-
-    fetchData()
-  }, [])
+  }, [isClient, status, fetchData, router])
 
   if (loading) {
     return (

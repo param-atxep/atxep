@@ -2,25 +2,38 @@ import { getAuthSession } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { NextResponse } from "next/server"
 
+// Force dynamic rendering - always get fresh data from DB
+export const dynamic = 'force-dynamic'
+
 export async function POST(req: Request) {
   try {
     const session = await getAuthSession()
 
-    if (!session?.user?.email) {
+    if (!session?.user) {
+      console.error('[ONBOARD_ERROR] No session or user in session')
       return NextResponse.json(
         { error: "Unauthorized - Please log in first" },
         { status: 401 }
       )
     }
 
-    const normalizedEmail = session.user.email.toLowerCase().trim()
+    const emailToUse = session.user.email?.toLowerCase().trim()
+
+    if (!emailToUse) {
+      console.error('[ONBOARD_ERROR] No email in session user:', session.user)
+      return NextResponse.json(
+        { error: "Session email not found. Please log in again." },
+        { status: 401 }
+      )
+    }
 
     // Get user from database (they should exist from login)
     let user = await db.user.findUnique({
-      where: { email: normalizedEmail },
+      where: { email: emailToUse },
     })
 
     if (!user) {
+      console.error('[ONBOARD_ERROR] User not found for email:', emailToUse)
       return NextResponse.json(
         { error: "User not found. Please log in again." },
         { status: 404 }
@@ -48,7 +61,7 @@ export async function POST(req: Request) {
         // Ensure username exists for all users
         ...(
           !user.username && {
-            username: normalizedEmail.split('@')[0] + '_' + user.id.slice(0, 8),
+            username: emailToUse.split('@')[0] + '_' + user.id.slice(0, 8),
           }
         ),
       },

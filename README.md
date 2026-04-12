@@ -1,10 +1,10 @@
-# ATXEP
+# ALTFaze
 
-ATXEP is a modern SaaS platform built using Next.js, Tailwind CSS, Shadcn-ui, Magic-ui, Supabase, NextAuth, and Prisma. It is powered by Vercel and includes authentication, premium features, and team collaboration capabilities. ATXEP enables you to hire freelancers, build projects, buy templates, and get professional support.
+ALTFaze is a modern SaaS platform built using Next.js, Tailwind CSS, Shadcn-ui, Magic-ui, Supabase, NextAuth, and Prisma. It is powered by Vercel and includes authentication, premium features, and team collaboration capabilities. ALTFaze enables you to hire freelancers, build projects, buy templates, and get professional support.
 
 ## Overview
 
-ATXEP is a comprehensive freelance marketplace and project management platform that connects clients with talented freelancers. Built with modern technologies for production-grade performance and scalability.
+ALTFaze is a comprehensive freelance marketplace and project management platform that connects clients with talented freelancers. Built with modern technologies for production-grade performance and scalability.
 
 
 ## Environment Variables
@@ -19,7 +19,7 @@ DATABASE_URL=
 
 ```
 NEXTAUTH_SECRET=
-NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_URL=http://localhost:3002
 ```
 
 ### Google OAuth Configuration
@@ -48,8 +48,8 @@ STRIPE_WEBHOOK_SECRET=
 
 1. **Clone the repository:**
    ```sh
-   git clone https://github.com/param-atxep/atxep.git
-   cd atxep
+   git clone https://github.com/param-ALTFaze/ALTFaze.git
+   cd ALTFaze
    ```
 
 2. **Create and populate the `.env` file:**
@@ -70,7 +70,7 @@ STRIPE_WEBHOOK_SECRET=
 
 5. **Open your browser and navigate to:**
    ```
-   http://localhost:3000
+   http://localhost:3002
    ```
 
 ## License

@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { useSession, signOut } from "next-auth/react"
 import { cn } from "@/lib/utils"
@@ -127,7 +128,7 @@ export function DashboardSidebar() {
           <div className="rounded-md bg-primary p-2">
             <Icons.logo className="h-5 w-5 text-primary-foreground" />
           </div>
-          <span className="font-bold tracking-tight">ATXEP</span>
+          <span className="font-bold tracking-tight">ALTFaze</span>
         </Link>
       </div>
 
@@ -162,9 +163,11 @@ export function DashboardSidebar() {
         {session?.user ? (
           <>
             <div className="flex items-center gap-3 rounded-md bg-accent p-3">
-              <img
+              <Image
                 src={session.user.image || "https://avatar.vercel.sh/"}
                 alt={session.user.name || "User"}
+                width={32}
+                height={32}
                 className="h-8 w-8 rounded-full object-cover flex-shrink-0"
               />
               <div className="flex-1 min-w-0">

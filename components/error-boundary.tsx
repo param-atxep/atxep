@@ -34,7 +34,7 @@ export function ErrorBoundary({ error, reset }: ErrorBoundaryProps) {
             Something went wrong
           </h1>
           <p className="mt-2 text-muted-foreground">
-            We're sorry, but something unexpected happened. Please try again.
+            We&apos;re sorry, but something unexpected happened. Please try again.
           </p>
         </div>
 

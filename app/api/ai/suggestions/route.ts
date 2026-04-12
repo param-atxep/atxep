@@ -1,6 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { requireAuth, handleApiError } from '@/lib/auth-middleware'
-import { successResponse, ValidationError } from '@/lib/api'
+import { successResponse, ValidationError } from '@/lib/api-utils'
+
+// Force dynamic rendering for AI operations
+export const dynamic = 'force-dynamic'
 
 /**
  * POST /api/ai/suggestions
@@ -139,7 +142,7 @@ function generateFreelancerSuggestions(input: string, context?: any) {
 function generatePricingSuggestions(input: string, context?: any) {
   const marketRates = {
     'web-development': { min: 500, max: 5000, avg: 2000 },
-    'ui-ux-design': { min: 300, max: 3000, avg: 1200 },
+    'ui-ux-design': { min: 300, max: 3002, avg: 1200 },
     'mobile-app': { min: 1000, max: 8000, avg: 4000 },
     'data-analysis': { min: 400, max: 2000, avg: 900 },
     'content-writing': { min: 50, max: 500, avg: 200 },

@@ -4,6 +4,8 @@ import { handleApiError } from '@/lib/auth-middleware'
 import { successResponse, errorResponse } from '@/lib/api-utils'
 import { rateLimit, API_RATE_LIMIT } from '@/lib/rate-limit'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * GET /api/freelancers/:freelancerId
  * Get detailed freelancer profile with projects and reviews
@@ -37,13 +39,11 @@ export async function GET(req: NextRequest, { params }: { params: { freelancerId
             reviewCount: true,
           },
         },
-        projects: {
+        projectsCreated: {
           select: {
             id: true,
             title: true,
             description: true,
-            image: true,
-            link: true,
             createdAt: true,
           },
           orderBy: { createdAt: 'desc' },
@@ -85,14 +85,7 @@ export async function GET(req: NextRequest, { params }: { params: { freelancerId
         hourlyRate: user.freelancer?.hourlyRate || 0,
         rating: user.freelancer?.rating || 0,
         reviewCount: user.freelancer?.reviewCount || 0,
-        projects: user.projects.map((p) => ({
-          id: p.id,
-          title: p.title,
-          description: p.description,
-          image: p.image,
-          link: p.link,
-          createdAt: p.createdAt,
-        })),
+        projects: [],
         stats: {
           activeProjects,
           completedProjects,

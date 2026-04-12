@@ -1,27 +1,16 @@
-import { MainNav } from "@/components/main-nav";
-// import { MobileNav } from "@/components/mobile-nav";
-import { cn } from "@/lib/utils";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import { fontSans, fontDisplay } from "@/lib/fonts";
-import Link from "@/node_modules/next/link";
-import { buttonVariants } from "@/components/ui/button";
+import { MainNav } from "@/components/main-nav";
+import { fontDisplay } from "@/lib/fonts";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/components/providers";
 import { ModeToggle } from "@/components/toggle";
-// import HeroPage from "./hero/page";
-import { SiteFooter } from "@/components/site-footer";
-// import PricingPage from "@/app/pricing/page";
 import MobileNav from "@/components/mobile-nav";
 import { Toaster } from "@/components/ui/toaster";
-import { getCurrentUser } from "@/lib/session";
-import { getAuthSession } from "@/lib/auth";
-
-const inter = Inter({ subsets: ["latin"] });
+import { cn } from "@/lib/utils";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ATXEP - Hire, Build, Launch",
+  title: "ALTFaze - Hire, Build, Launch",
   description: "The all-in-one platform to hire freelancers, build projects, buy templates, and get help",
 };
 
@@ -31,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning style={{ fontFamily: 'var(--font-display)' }}>
+    <html lang="en" suppressHydrationWarning style={{ fontFamily: "var(--font-display)" }}>
       <body
         className={cn(
           "relative flex min-h-screen w-full flex-col justify-center scroll-smooth bg-background font-sans antialiased",

@@ -4,6 +4,9 @@ import { handleApiError } from '@/lib/auth-middleware'
 import { successResponse, errorResponse } from '@/lib/api-utils'
 import { rateLimit, API_RATE_LIMIT } from '@/lib/rate-limit'
 
+// Force dynamic rendering - always get fresh data from DB
+export const dynamic = 'force-dynamic'
+
 /**
  * GET /api/freelancers
  * ALTFaze: Discover available freelancers (PUBLIC - no auth required)
@@ -58,7 +61,7 @@ export async function GET(req: NextRequest) {
       where.freelancer = {
         ...where.freelancer,
         skills: {
-          hasSome: [skill] || [],
+          hasSome: [skill],
         },
       }
     }
@@ -109,14 +112,6 @@ export async function GET(req: NextRequest) {
               portfolio: true,
             },
           },
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          image: true,
-          createdAt: true,
-          freelancer: true,
         },
         orderBy,
         take: limit,
